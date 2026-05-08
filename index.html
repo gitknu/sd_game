@@ -7,110 +7,54 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <script src="https://unpkg.com/lucide@latest"></script>
-
 <style>
     :root {
-        --color-bg: #111111;
-        --color-card: #ffffff;
-        --color-accent: #0b5394;
-        --color-accent-hover: #083c6b;
-        --color-success: #2e7d32;
-        --color-danger: #b80000;
-        --color-text: #222222;
-        --shadow-large: 0 10px 30px rgba(0,0,0,0.5);
+        --color-bg: #111111; --color-card: #ffffff; --color-accent: #0b5394;
+        --color-accent-hover: #083c6b; --color-success: #2e7d32; --color-danger: #b80000;
+        --color-text: #222222; --shadow-large: 0 10px 30px rgba(0,0,0,0.5);
     }
-
     * { box-sizing: border-box; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
-
     body {
-        margin: 0; padding: 0;
-        background-color: var(--color-bg);
+        margin: 0; padding: 0; background-color: var(--color-bg);
         background-image: radial-gradient(circle at center, #2a2a2a 0%, #111111 100%);
-        font-family: 'Montserrat', sans-serif;
-        color: var(--color-text);
+        font-family: 'Montserrat', sans-serif; color: var(--color-text);
         position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-        height: 100dvh; width: 100%;
-        display: flex; align-items: center; justify-content: center;
-        overflow: hidden; 
+        height: 100dvh; width: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; 
     }
-
-    #ui-layer {
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
-        width: 100%; height: 100%; padding: 20px;
-    }
-    
+    #ui-layer { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; padding: 20px; }
     .card {
-        background: var(--color-card); 
-        padding: 2rem; 
-        border-radius: 2rem;
-        text-align: center; 
-        width: 100%; max-width: 400px;
-        box-shadow: var(--shadow-large);
-        display: flex; flex-direction: column; 
-        align-items: center; gap: 20px;
-        position: relative;
+        background: var(--color-card); padding: 2rem; border-radius: 2rem;
+        text-align: center; width: 100%; max-width: 400px;
+        box-shadow: var(--shadow-large); display: flex; flex-direction: column; align-items: center; gap: 20px; position: relative;
     }
-
-    h1 {
-        margin: 0; font-size: 1.5rem; font-weight: 800; text-transform: uppercase;
-        color: var(--color-text); letter-spacing: 1px;
-    }
-
+    h1 { margin: 0; font-size: 1.5rem; font-weight: 800; text-transform: uppercase; color: var(--color-text); letter-spacing: 1px; }
     .counter-container {
-        position: relative;
-        width: 200px; height: 200px;
-        border-radius: 50%;
-        background: #f0f4f8;
-        display: flex; align-items: center; justify-content: center;
-        border: 8px solid var(--color-accent);
+        position: relative; width: 200px; height: 200px; border-radius: 50%; background: #f0f4f8;
+        display: flex; align-items: center; justify-content: center; border: 8px solid var(--color-accent);
         box-shadow: inset 0 0 20px rgba(0,0,0,0.1), 0 0 0 10px rgba(11, 83, 148, 0.1);
         transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
-
-    .counter-container.pulse {
-        transform: scale(1.05);
-        box-shadow: inset 0 0 20px rgba(0,0,0,0.1), 0 0 0 20px rgba(11, 83, 148, 0.2);
-    }
-
-    #counter {
-        font-size: 5rem; font-weight: 900; color: var(--color-accent);
-        line-height: 1; margin-top: 5px;
-    }
-
-    .subtitle {
-        font-size: 0.9rem; font-weight: 600; color: #666; text-transform: uppercase;
-    }
-
+    .counter-container.pulse { transform: scale(1.05); box-shadow: inset 0 0 20px rgba(0,0,0,0.1), 0 0 0 20px rgba(11, 83, 148, 0.2); }
+    #counter { font-size: 5rem; font-weight: 900; color: var(--color-accent); line-height: 1; margin-top: 5px; }
+    .subtitle { font-size: 0.9rem; font-weight: 600; color: #666; text-transform: uppercase; }
     #status-badge {
-        display: inline-flex; align-items: center; gap: 6px;
-        padding: 6px 12px; border-radius: 20px;
-        font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
-        background: #e0e0e0; color: #555;
-        transition: all 0.3s ease;
+        display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 20px;
+        font-size: 0.75rem; font-weight: 700; text-transform: uppercase; background: #e0e0e0; color: #555; transition: all 0.3s ease;
     }
-
     #status-badge i { width: 14px; height: 14px; }
-    
     .status-host { background: #e3f2fd !important; color: var(--color-accent) !important; }
     .status-client { background: #e8f5e9 !important; color: var(--color-success) !important; }
     .status-error { background: #ffebee !important; color: var(--color-danger) !important; }
-
     .btn-primary {
-        background: var(--color-accent); 
-        color: white; border: none; 
-        padding: 1rem; width: 100%;
+        background: var(--color-accent); color: white; border: none; padding: 1rem; width: 100%;
         font-size: 1.1rem; font-family: 'Montserrat', sans-serif; font-weight: 700;
-        border-radius: 1rem; cursor: pointer; 
-        display: flex; align-items: center; justify-content: center; gap: 10px;
-        box-shadow: 0 6px 15px rgba(11, 83, 148, 0.3); text-transform: uppercase;
-        transition: transform 0.1s, background 0.2s;
+        border-radius: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;
+        box-shadow: 0 6px 15px rgba(11, 83, 148, 0.3); text-transform: uppercase; transition: transform 0.1s, background 0.2s;
     }
     .btn-primary:active { transform: scale(0.97); }
     .btn-primary:hover { background: var(--color-accent-hover); }
-
 </style>
 </head>
 <body>
@@ -118,17 +62,14 @@
 <div id="ui-layer">
     <div class="card">
         <h1>Онлайн Гравці</h1>
-        
         <div id="status-badge">
             <i data-lucide="loader-2" class="spin" style="animation: spin 1s linear infinite;"></i>
             <span id="status-text">Підключення...</span>
         </div>
-
         <div class="counter-container" id="counter-box">
             <span id="counter">0</span>
         </div>
         <span class="subtitle">Осіб на сторінці</span>
-
         <button class="btn-primary" onclick="shareLink()">
             <i data-lucide="share-2"></i> ЗАПРОСИТИ
         </button>
@@ -138,11 +79,9 @@
 <script>
     lucide.createIcons();
 
-    // Системні налаштування
-    const PING_INTERVAL = 1000;  // Частота пінгу (1 секунда)
-    const TIMEOUT_LIMIT = 3000;  // Максимальний час очікування відповіді (3 секунди)
+    const PING_INTERVAL = 1000;  
+    const TIMEOUT_LIMIT = 3000;  
     
-    // Глобальні змінні
     let myPeer = null;
     let hostConnection = null;
     let clientConnections =[];
@@ -152,102 +91,101 @@
     let hostActivityInterval = null;
     let clientActivityInterval = null;
     let lastHostActivity = Date.now();
+    let isReconnecting = false;
 
     const urlParams = new URLSearchParams(window.location.search);
     let roomString = urlParams.get('room') || window.location.hostname.replace(/[^a-zA-Z0-9]/g, '') || 'local';
     const GLOBAL_ROOM_ID = `webrtc-auto-room-${roomString}`;
 
-    window.onload = () => {
-        initNetwork();
-    };
+    window.onload = () => { initNetwork(); };
 
     function initNetwork() {
+        if (isReconnecting) return;
         updateStatus("Пошук мережі...", "loading");
         
-        // 1. Намагаємось зайняти головний ID (Стати Хостом)
         myPeer = new Peer(GLOBAL_ROOM_ID);
 
         myPeer.on('open', (id) => {
             isHost = true;
             updateStatus("Ви - Сервер (Хост)", "host");
-            updateCount(1); // Ми перші та єдині наразі
+            updateCount(1);
             setupHostLogic();
         });
 
         myPeer.on('error', (err) => {
-            // ID вже зайнятий - стаємо Клієнтом
             if (err.type === 'unavailable-id') {
                 isHost = false;
                 myPeer.destroy();
                 setTimeout(startAsClient, 500); 
             } else {
-                updateStatus("Помилка з'єднання", "error");
-                console.error(err);
+                handleHostDrop();
             }
+        });
+
+        myPeer.on('disconnected', () => {
+            if (myPeer && !myPeer.destroyed) myPeer.reconnect();
         });
     }
 
-    // ==========================================
-    // ЛОГІКА ХОСТА
-    // ==========================================
     function setupHostLogic() {
         clearInterval(clientActivityInterval);
+        clientConnections =[];
 
         myPeer.on('connection', (conn) => {
-            clientConnections.push(conn);
             conn.lastActivity = Date.now();
+            clientConnections.push(conn);
 
-            conn.on('open', () => {
-                broadcastCount();
-            });
-
+            conn.on('open', () => { broadcastCount(); });
             conn.on('data', (data) => {
-                if (data.type === 'PONG') {
+                if (data && data.type === 'PONG') {
                     conn.lastActivity = Date.now();
                 }
             });
-
             conn.on('close', () => { removeClient(conn); });
             conn.on('error', () => { removeClient(conn); });
         });
 
-        // Активна перевірка життєдіяльності клієнтів
         clearInterval(hostActivityInterval);
         hostActivityInterval = setInterval(() => {
             if (!isHost) return;
             const now = Date.now();
             let droppedSomeone = false;
+            let activeConnections =[];
 
-            clientConnections = clientConnections.filter(conn => {
+            for (let i = 0; i < clientConnections.length; i++) {
+                let conn = clientConnections[i];
                 if (now - conn.lastActivity > TIMEOUT_LIMIT) {
-                    if (conn.open) conn.close();
+                    try { if (conn.open) conn.close(); } catch (e) {}
                     droppedSomeone = true;
-                    return false;
+                } else {
+                    try {
+                        if (conn.open) conn.send({ type: 'PING' });
+                        activeConnections.push(conn);
+                    } catch (e) {
+                        droppedSomeone = true;
+                    }
                 }
-                if (conn.open) conn.send({ type: 'PING' });
-                return true;
-            });
+            }
 
+            clientConnections = activeConnections;
             if (droppedSomeone) broadcastCount();
         }, PING_INTERVAL);
     }
 
     function removeClient(conn) {
+        let originalLength = clientConnections.length;
         clientConnections = clientConnections.filter(c => c.peer !== conn.peer);
-        broadcastCount();
+        if (clientConnections.length !== originalLength) broadcastCount();
     }
 
     function broadcastCount() {
         const count = clientConnections.length + 1;
         updateCount(count);
         clientConnections.forEach(conn => {
-            if (conn.open) conn.send({ type: 'COUNT', value: count });
+            try { if (conn.open) conn.send({ type: 'COUNT', value: count }); } catch(e) {}
         });
     }
 
-    // ==========================================
-    // ЛОГІКА КЛІЄНТА
-    // ==========================================
     function startAsClient() {
         clearInterval(hostActivityInterval);
         myPeer = new Peer();
@@ -259,21 +197,21 @@
                 updateStatus("Підключено", "client");
                 lastHostActivity = Date.now();
                 
-                // Активна перевірка життєдіяльності хоста
                 clearInterval(clientActivityInterval);
                 clientActivityInterval = setInterval(() => {
                     if (Date.now() - lastHostActivity > TIMEOUT_LIMIT) {
                         handleHostDrop();
                     }
-                }, 1000);
+                }, PING_INTERVAL);
             });
 
             hostConnection.on('data', (data) => {
+                if (!data) return;
                 if (data.type === 'COUNT') {
                     updateCount(data.value);
                 } else if (data.type === 'PING') {
                     lastHostActivity = Date.now();
-                    hostConnection.send({ type: 'PONG' });
+                    try { hostConnection.send({ type: 'PONG' }); } catch(e) {}
                 }
             });
 
@@ -281,44 +219,39 @@
             hostConnection.on('error', () => { handleHostDrop(); });
         });
 
-        myPeer.on('error', (err) => {
-            handleHostDrop();
-        });
+        myPeer.on('error', (err) => { handleHostDrop(); });
     }
 
     function handleHostDrop() {
-        if(isHost) return; 
-
+        if (isReconnecting || isHost) return;
+        isReconnecting = true;
+        
         clearInterval(clientActivityInterval);
+        clearInterval(hostActivityInterval);
         updateStatus("Оновлення...", "loading");
         
         if (hostConnection) {
-            hostConnection.close();
+            try { hostConnection.close(); } catch(e) {}
             hostConnection = null;
         }
         if (myPeer) {
-            myPeer.destroy();
+            try { myPeer.destroy(); } catch(e) {}
             myPeer = null;
         }
 
-        // Рандомна затримка перед спробою стати новим хостом (Leader Election)
         const randomBackoff = Math.floor(Math.random() * 2000) + 500;
         setTimeout(() => {
+            isReconnecting = false;
             initNetwork();
         }, randomBackoff);
     }
 
-    // ==========================================
-    // UI ФУНКЦІЇ
-    // ==========================================
     function updateCount(newCount) {
         if (newCount !== currentCount) {
             currentCount = newCount;
             const counterEl = document.getElementById('counter');
             const boxEl = document.getElementById('counter-box');
-            
             counterEl.innerText = currentCount;
-            
             boxEl.classList.remove('pulse');
             void boxEl.offsetWidth; 
             boxEl.classList.add('pulse');
@@ -329,10 +262,8 @@
     function updateStatus(text, type) {
         const badge = document.getElementById('status-badge');
         const span = document.getElementById('status-text');
-        
         badge.className = '';
         span.innerText = text;
-
         if (type === 'loading') {
             badge.innerHTML = `<i data-lucide="loader-2" style="animation: spin 1s linear infinite;"></i> <span id="status-text">${text}</span>`;
         } else if (type === 'host') {
@@ -351,23 +282,14 @@
     async function shareLink() {
         const link = window.location.href;
         if (navigator.share) {
-            try {
-                await navigator.share({
-                    title: 'Live Counter',
-                    text: 'Приєднуйся до моєї кімнати!',
-                    url: link
-                });
-            } catch (err) { }
+            try { await navigator.share({ title: 'Live Counter', text: 'Приєднуйся до моєї кімнати!', url: link }); } catch (err) {}
         } else {
             navigator.clipboard.writeText(link);
             const btn = document.querySelector('.btn-primary');
             const origHtml = btn.innerHTML;
             btn.innerHTML = `<i data-lucide="check"></i> СКОПІЙОВАНО`;
             lucide.createIcons();
-            setTimeout(() => {
-                btn.innerHTML = origHtml;
-                lucide.createIcons();
-            }, 2000);
+            setTimeout(() => { btn.innerHTML = origHtml; lucide.createIcons(); }, 2000);
         }
     }
 </script>
