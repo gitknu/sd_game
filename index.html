@@ -158,11 +158,32 @@
     .status-client { background: #e8f5e9 !important; color: var(--color-success) !important; }
     .status-error { background: #ffebee !important; color: var(--color-danger) !important; }
 
+    /* Оновлені стилі блоку команди */
     #team-container {
-        display: none; width: 100%; margin-top: 5px; 
-        padding: 12px; border-radius: 12px; font-size: 1.1rem; 
+        display: none; /* JS змінюватиме на flex */
+        align-items: center; justify-content: space-between;
+        width: 100%; margin-top: 5px; 
+        padding: 10px 16px; border-radius: 12px; font-size: 1.1rem; 
         font-weight: 800; text-transform: uppercase; letter-spacing: 1px; 
         transition: all 0.3s ease;
+    }
+
+    .team-left {
+        display: flex; align-items: center; gap: 8px;
+    }
+
+    .team-left i {
+        width: 20px; height: 20px;
+    }
+
+    .team-counter-badge {
+        background: rgba(127, 127, 127, 0.25);
+        color: inherit;
+        border-radius: 50%;
+        width: 32px; height: 32px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1rem; font-weight: 900;
+        border: 1px solid rgba(127, 127, 127, 0.3);
     }
 
     .btn-primary {
@@ -211,7 +232,13 @@
 
         <!-- Блок команди -->
         <div id="team-container">
-            <span id="team-name"></span>
+            <div class="team-left">
+                <i data-lucide="users"></i>
+                <span id="team-name"></span>
+            </div>
+            <div class="team-counter-badge">
+                <span id="team-counter">0</span>
+            </div>
         </div>
 
         <!-- Кнопка поширення -->
@@ -243,6 +270,7 @@
     let isHost = false;
     let currentCount = 0;
     let myTeam = null;
+    let currentTeamCounts = {};
 
     let hostActivityInterval = null;
     let clientActivityInterval = null;
@@ -288,6 +316,7 @@
             updateTeamUI(myTeam);
             
             updateCount(1); // Ми перші та єдині наразі
+            updateTeamCountUI(1);
             setupHostLogic();
         });
 
@@ -361,8 +390,26 @@
     function broadcastCount() {
         const count = clientConnections.length + 1;
         updateCount(count);
+        
+        // Підрахунок людей у кожній команді
+        const teamCounts = { 'red': 0, 'white': 0, 'black': 0, 'blue': 0 };
+        
+        if (myTeam) teamCounts[myTeam.id]++;
+        
+        clientConnections.forEach(c => {
+            if (c.team) {
+                teamCounts[c.team.id]++;
+            }
+        });
+
+        // Оновлюємо лічильник команди для самого хоста
+        if (myTeam) {
+            updateTeamCountUI(teamCounts[myTeam.id]);
+        }
+
+        // Розсилаємо загальну кількість та об'єм команд клієнтам
         clientConnections.forEach(conn => {
-            if (conn.open) conn.send({ type: 'COUNT', value: count });
+            if (conn.open) conn.send({ type: 'COUNT', value: count, teamCounts: teamCounts });
         });
     }
 
@@ -416,9 +463,18 @@
             hostConnection.on('data', (data) => {
                 if (data.type === 'COUNT') {
                     updateCount(data.value);
+                    if (data.teamCounts) {
+                        currentTeamCounts = data.teamCounts;
+                        if (myTeam) {
+                            updateTeamCountUI(currentTeamCounts[myTeam.id]);
+                        }
+                    }
                 } else if (data.type === 'TEAM') {
                     myTeam = data.value;
                     updateTeamUI(myTeam);
+                    if (currentTeamCounts && currentTeamCounts[myTeam.id] !== undefined) {
+                        updateTeamCountUI(currentTeamCounts[myTeam.id]);
+                    }
                 } else if (data.type === 'PING') {
                     lastHostActivity = Date.now();
                     hostConnection.send({ type: 'PONG' });
@@ -474,12 +530,19 @@
         }
     }
 
+    function updateTeamCountUI(count) {
+        const teamCounterEl = document.getElementById('team-counter');
+        if (teamCounterEl) {
+            teamCounterEl.innerText = count || 0;
+        }
+    }
+
     function updateTeamUI(team) {
         if (!team) return;
         const container = document.getElementById('team-container');
         const nameEl = document.getElementById('team-name');
         
-        container.style.display = 'block';
+        container.style.display = 'flex'; // Тепер це flexbox
         container.style.backgroundColor = team.bg;
         container.style.color = team.color;
         
