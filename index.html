@@ -8,7 +8,6 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
-<!-- Лише необхідні бібліотеки: PeerJS для WebRTC та Lucide для іконок -->
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <script src="https://unpkg.com/lucide@latest"></script>
 
@@ -38,7 +37,6 @@
         overflow: hidden; 
     }
 
-    /* --- UI ELEMENTS --- */
     #ui-layer {
         display: flex; flex-direction: column; align-items: center; justify-content: center;
         width: 100%; height: 100%; padding: 20px;
@@ -61,7 +59,6 @@
         color: var(--color-text); letter-spacing: 1px;
     }
 
-    /* --- COUNTER DISPLAY --- */
     .counter-container {
         position: relative;
         width: 200px; height: 200px;
@@ -87,7 +84,6 @@
         font-size: 0.9rem; font-weight: 600; color: #666; text-transform: uppercase;
     }
 
-    /* --- NETWORK STATUS --- */
     #status-badge {
         display: inline-flex; align-items: center; gap: 6px;
         padding: 6px 12px; border-radius: 20px;
@@ -102,7 +98,6 @@
     .status-client { background: #e8f5e9 !important; color: var(--color-success) !important; }
     .status-error { background: #ffebee !important; color: var(--color-danger) !important; }
 
-    /* --- ACTION BUTTONS --- */
     .btn-primary {
         background: var(--color-accent); 
         color: white; border: none; 
@@ -141,9 +136,12 @@
 </div>
 
 <script>
-    // Ініціалізація іконок
     lucide.createIcons();
 
+    // Системні налаштування
+    const PING_INTERVAL = 1000;  // Частота пінгу (1 секунда)
+    const TIMEOUT_LIMIT = 3000;  // Максимальний час очікування відповіді (3 секунди)
+    
     // Глобальні змінні
     let myPeer = null;
     let hostConnection = null;
@@ -151,13 +149,14 @@
     let isHost = false;
     let currentCount = 0;
 
-    // Створюємо унікальний ідентифікатор кімнати для цього сайту/домену.
-    // Якщо хочете різні кімнати, можна додати параметри URL (?room=123)
+    let hostActivityInterval = null;
+    let clientActivityInterval = null;
+    let lastHostActivity = Date.now();
+
     const urlParams = new URLSearchParams(window.location.search);
     let roomString = urlParams.get('room') || window.location.hostname.replace(/[^a-zA-Z0-9]/g, '') || 'local';
     const GLOBAL_ROOM_ID = `webrtc-auto-room-${roomString}`;
 
-    // Запуск при завантаженні
     window.onload = () => {
         initNetwork();
     };
@@ -165,23 +164,22 @@
     function initNetwork() {
         updateStatus("Пошук мережі...", "loading");
         
-        // КРОК 1: Спробуємо стати Хостом (головним сервером для цієї сторінки)
+        // 1. Намагаємось зайняти головний ID (Стати Хостом)
         myPeer = new Peer(GLOBAL_ROOM_ID);
 
         myPeer.on('open', (id) => {
-            // Якщо ми успішно зайняли цей ID, значить ми перші на сторінці - ми ХОСТ!
             isHost = true;
             updateStatus("Ви - Сервер (Хост)", "host");
-            updateCount(1); // Спочатку ми одні
+            updateCount(1); // Ми перші та єдині наразі
             setupHostLogic();
         });
 
         myPeer.on('error', (err) => {
-            // Якщо ID вже зайнятий - значить Хост вже існує, стаємо Клієнтом
+            // ID вже зайнятий - стаємо Клієнтом
             if (err.type === 'unavailable-id') {
                 isHost = false;
                 myPeer.destroy();
-                setTimeout(startAsClient, 500); // Невелика затримка для безпечного очищення
+                setTimeout(startAsClient, 500); 
             } else {
                 updateStatus("Помилка з'єднання", "error");
                 console.error(err);
@@ -190,15 +188,17 @@
     }
 
     // ==========================================
-    // ЛОГІКА ХОСТА (Головний вузол)
+    // ЛОГІКА ХОСТА
     // ==========================================
     function setupHostLogic() {
+        clearInterval(clientActivityInterval);
+
         myPeer.on('connection', (conn) => {
             clientConnections.push(conn);
             conn.lastActivity = Date.now();
 
             conn.on('open', () => {
-                broadcastCount(); // Оновлюємо кількість всім
+                broadcastCount();
             });
 
             conn.on('data', (data) => {
@@ -207,35 +207,29 @@
                 }
             });
 
-            conn.on('close', () => {
-                removeClient(conn);
-            });
-
-            conn.on('error', () => {
-                removeClient(conn);
-            });
+            conn.on('close', () => { removeClient(conn); });
+            conn.on('error', () => { removeClient(conn); });
         });
 
-        // HEARTBEAT: Кожні 3 секунди перевіряємо, чи клієнти ще живі
-        setInterval(() => {
+        // Активна перевірка життєдіяльності клієнтів
+        clearInterval(hostActivityInterval);
+        hostActivityInterval = setInterval(() => {
             if (!isHost) return;
             const now = Date.now();
             let droppedSomeone = false;
 
             clientConnections = clientConnections.filter(conn => {
-                // Якщо клієнт не відповідає більше 10 секунд - видаляємо його
-                if (now - conn.lastActivity > 10000) {
+                if (now - conn.lastActivity > TIMEOUT_LIMIT) {
                     if (conn.open) conn.close();
                     droppedSomeone = true;
                     return false;
                 }
-                // Відправляємо Ping
                 if (conn.open) conn.send({ type: 'PING' });
                 return true;
             });
 
             if (droppedSomeone) broadcastCount();
-        }, 3000);
+        }, PING_INTERVAL);
     }
 
     function removeClient(conn) {
@@ -244,7 +238,7 @@
     }
 
     function broadcastCount() {
-        const count = clientConnections.length + 1; // 1 (Хост) + кількість клієнтів
+        const count = clientConnections.length + 1;
         updateCount(count);
         clientConnections.forEach(conn => {
             if (conn.open) conn.send({ type: 'COUNT', value: count });
@@ -252,48 +246,62 @@
     }
 
     // ==========================================
-    // ЛОГІКА КЛІЄНТА (Підключений гравець)
+    // ЛОГІКА КЛІЄНТА
     // ==========================================
     function startAsClient() {
-        myPeer = new Peer(); // Отримуємо випадковий ID для себе
+        clearInterval(hostActivityInterval);
+        myPeer = new Peer();
 
         myPeer.on('open', (id) => {
             hostConnection = myPeer.connect(GLOBAL_ROOM_ID, { reliable: true });
 
             hostConnection.on('open', () => {
                 updateStatus("Підключено", "client");
+                lastHostActivity = Date.now();
+                
+                // Активна перевірка життєдіяльності хоста
+                clearInterval(clientActivityInterval);
+                clientActivityInterval = setInterval(() => {
+                    if (Date.now() - lastHostActivity > TIMEOUT_LIMIT) {
+                        handleHostDrop();
+                    }
+                }, 1000);
             });
 
             hostConnection.on('data', (data) => {
                 if (data.type === 'COUNT') {
                     updateCount(data.value);
                 } else if (data.type === 'PING') {
+                    lastHostActivity = Date.now();
                     hostConnection.send({ type: 'PONG' });
                 }
             });
 
-            hostConnection.on('close', () => {
-                handleHostDrop();
-            });
-
-            hostConnection.on('error', () => {
-                handleHostDrop();
-            });
+            hostConnection.on('close', () => { handleHostDrop(); });
+            hostConnection.on('error', () => { handleHostDrop(); });
         });
 
         myPeer.on('error', (err) => {
-            console.error("Client Peer Error:", err);
             handleHostDrop();
         });
     }
 
     function handleHostDrop() {
-        updateStatus("Перепідключення...", "loading");
-        if (myPeer) myPeer.destroy();
+        if(isHost) return; 
+
+        clearInterval(clientActivityInterval);
+        updateStatus("Оновлення...", "loading");
         
-        // Якщо хост відключився, усі клієнти чекають випадковий час (від 0.5с до 2.5с) 
-        // і намагаються стати новим Хостом. Той хто першим підніметься - стане Хостом,
-        // інші знову стануть Клієнтами і підключаться до нього.
+        if (hostConnection) {
+            hostConnection.close();
+            hostConnection = null;
+        }
+        if (myPeer) {
+            myPeer.destroy();
+            myPeer = null;
+        }
+
+        // Рандомна затримка перед спробою стати новим хостом (Leader Election)
         const randomBackoff = Math.floor(Math.random() * 2000) + 500;
         setTimeout(() => {
             initNetwork();
@@ -311,9 +319,8 @@
             
             counterEl.innerText = currentCount;
             
-            // Анімація пульсації при зміні числа
             boxEl.classList.remove('pulse');
-            void boxEl.offsetWidth; // Тригер reflow для перезапуску CSS анімації
+            void boxEl.offsetWidth; 
             boxEl.classList.add('pulse');
             setTimeout(() => boxEl.classList.remove('pulse'), 300);
         }
@@ -350,18 +357,13 @@
                     text: 'Приєднуйся до моєї кімнати!',
                     url: link
                 });
-            } catch (err) {
-                console.error("Помилка Share API", err);
-            }
+            } catch (err) { }
         } else {
-            // Фолбек: просто копіюємо в буфер обміну
             navigator.clipboard.writeText(link);
-            
             const btn = document.querySelector('.btn-primary');
             const origHtml = btn.innerHTML;
             btn.innerHTML = `<i data-lucide="check"></i> СКОПІЙОВАНО`;
             lucide.createIcons();
-            
             setTimeout(() => {
                 btn.innerHTML = origHtml;
                 lucide.createIcons();
