@@ -10,7 +10,6 @@
 
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <script src="https://unpkg.com/lucide@latest"></script>
-<!-- Додано бібліотеку для генерації QR-коду -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
 <style>
@@ -44,24 +43,55 @@
         width: 100%; height: 100%; padding: 20px;
     }
     
-    /* Зменшений лічильник у правому верхньому куті */
-    #top-right-counter {
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: var(--color-card);
-        padding: 5px 15px 5px 5px;
-        border-radius: 30px;
+    .card {
+        background: var(--color-card); 
+        padding: 1.5rem; 
+        border-radius: 2rem;
+        text-align: center; 
+        width: 100%; max-width: 400px;
+        box-shadow: var(--shadow-large);
+        display: flex; flex-direction: column; 
+        align-items: center; gap: 15px;
+        position: relative;
+    }
+
+    /* Шапка картки для заголовка та лічильника */
+    .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        padding-bottom: 5px;
+        gap: 10px;
+    }
+
+    .header-left {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+        flex: 1;
+    }
+
+    .header-right {
         display: flex;
         align-items: center;
-        gap: 10px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-        z-index: 1000;
+        gap: 8px;
+        background: #f8f9fa;
+        padding: 6px 12px 6px 6px;
+        border-radius: 30px;
+        border: 1px solid #e9ecef;
+        flex-shrink: 0;
+    }
+
+    h1 {
+        margin: 0; font-size: 1.2rem; font-weight: 800; text-transform: uppercase;
+        color: var(--color-text); letter-spacing: 0.5px; text-align: left;
     }
 
     .counter-container {
         position: relative;
-        width: 44px; height: 44px;
+        width: 40px; height: 40px;
         border-radius: 50%;
         background: #f0f4f8;
         display: flex; align-items: center; justify-content: center;
@@ -72,50 +102,33 @@
 
     .counter-container.pulse {
         transform: scale(1.15);
-        box-shadow: inset 0 0 5px rgba(0,0,0,0.1), 0 0 0 8px rgba(11, 83, 148, 0.2);
+        box-shadow: inset 0 0 5px rgba(0,0,0,0.1), 0 0 0 6px rgba(11, 83, 148, 0.2);
     }
 
     #counter {
-        font-size: 1.3rem; font-weight: 900; color: var(--color-accent);
+        font-size: 1.2rem; font-weight: 900; color: var(--color-accent);
         line-height: 1; margin-top: 2px;
     }
 
     .counter-label {
-        font-size: 0.75rem; font-weight: 800; color: var(--color-text); 
+        font-size: 0.7rem; font-weight: 800; color: #555; 
         text-transform: uppercase; line-height: 1.1; text-align: left;
     }
 
-    .card {
-        background: var(--color-card); 
-        padding: 2rem; 
-        border-radius: 2rem;
-        text-align: center; 
-        width: 100%; max-width: 400px;
-        box-shadow: var(--shadow-large);
-        display: flex; flex-direction: column; 
-        align-items: center; gap: 20px;
-        position: relative;
-    }
-
-    h1 {
-        margin: 0; font-size: 1.5rem; font-weight: 800; text-transform: uppercase;
-        color: var(--color-text); letter-spacing: 1px;
-    }
-
     .subtitle {
-        font-size: 0.9rem; font-weight: 600; color: #666; text-transform: uppercase;
+        font-size: 0.85rem; font-weight: 700; color: #666; text-transform: uppercase;
     }
 
     /* Стилі для QR-коду */
     #qrcode-box {
         background: #f8f9fa;
-        padding: 20px;
-        border-radius: 20px;
+        padding: 15px;
+        border-radius: 1.5rem;
         border: 1px solid #e9ecef;
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 15px;
+        gap: 12px;
         width: 100%;
     }
 
@@ -132,21 +145,21 @@
     }
 
     #status-badge {
-        display: inline-flex; align-items: center; gap: 6px;
-        padding: 6px 12px; border-radius: 20px;
-        font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+        display: inline-flex; align-items: center; gap: 4px;
+        padding: 5px 10px; border-radius: 20px;
+        font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
         background: #e0e0e0; color: #555;
         transition: all 0.3s ease;
     }
 
-    #status-badge i { width: 14px; height: 14px; }
+    #status-badge i { width: 12px; height: 12px; }
     
     .status-host { background: #e3f2fd !important; color: var(--color-accent) !important; }
     .status-client { background: #e8f5e9 !important; color: var(--color-success) !important; }
     .status-error { background: #ffebee !important; color: var(--color-danger) !important; }
 
     #team-container {
-        display: none; width: 100%; margin-top: 5px; margin-bottom: 5px; 
+        display: none; width: 100%; margin-top: 5px; 
         padding: 12px; border-radius: 12px; font-size: 1.1rem; 
         font-weight: 800; text-transform: uppercase; letter-spacing: 1px; 
         transition: all 0.3s ease;
@@ -156,9 +169,9 @@
         background: var(--color-accent); 
         color: white; border: none; 
         padding: 1rem; width: 100%;
-        font-size: 1.1rem; font-family: 'Montserrat', sans-serif; font-weight: 700;
+        font-size: 1rem; font-family: 'Montserrat', sans-serif; font-weight: 700;
         border-radius: 1rem; cursor: pointer; 
-        display: flex; align-items: center; justify-content: center; gap: 10px;
+        display: flex; align-items: center; justify-content: center; gap: 8px;
         box-shadow: 0 6px 15px rgba(11, 83, 148, 0.3); text-transform: uppercase;
         transition: transform 0.1s, background 0.2s;
     }
@@ -169,33 +182,39 @@
 </head>
 <body>
 
-<!-- Компактний лічильник у куті -->
-<div id="top-right-counter">
-    <div class="counter-container" id="counter-box">
-        <span id="counter">0</span>
-    </div>
-    <div class="counter-label">Осіб<br>онлайн</div>
-</div>
-
 <div id="ui-layer">
     <div class="card">
-        <h1>Онлайн Гравці</h1>
         
-        <div id="status-badge">
-            <i data-lucide="loader-2" class="spin" style="animation: spin 1s linear infinite;"></i>
-            <span id="status-text">Підключення...</span>
+        <!-- Шапка: Заголовок, Статус та Лічильник -->
+        <div class="card-header">
+            <div class="header-left">
+                <h1>Онлайн Гравці</h1>
+                <div id="status-badge">
+                    <i data-lucide="loader-2" class="spin" style="animation: spin 1s linear infinite;"></i>
+                    <span id="status-text">Підключення...</span>
+                </div>
+            </div>
+            
+            <div class="header-right">
+                <div class="counter-container" id="counter-box">
+                    <span id="counter">0</span>
+                </div>
+                <div class="counter-label">Осіб<br>онлайн</div>
+            </div>
         </div>
 
-        <!-- Центральний блок тепер містить QR-код -->
+        <!-- Центральний блок: QR-код -->
         <div id="qrcode-box">
             <div id="qrcode"></div>
             <span class="subtitle">Скануй, щоб приєднатись</span>
         </div>
 
+        <!-- Блок команди -->
         <div id="team-container">
             Команда: <span id="team-name"></span>
         </div>
 
+        <!-- Кнопка поширення -->
         <button class="btn-primary" onclick="shareLink()">
             <i data-lucide="share-2"></i> ЗАПРОСИТИ
         </button>
@@ -244,8 +263,8 @@
         qrcodeContainer.innerHTML = ""; 
         new QRCode(qrcodeContainer, {
             text: url,
-            width: 200,
-            height: 200,
+            width: 180,
+            height: 180,
             colorDark : "#111111",
             colorLight : "#ffffff",
             correctLevel : QRCode.CorrectLevel.L
