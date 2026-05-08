@@ -279,7 +279,7 @@
 
         myPeer.on('open', (id) => {
             isHost = true;
-            updateStatus("Ви - Сервер (Хост)", "host");
+            updateStatus("Ви - хост", "host");
             
             // Якщо хост не має команди (перший запуск), даємо йому першу
             if (!myTeam) {
