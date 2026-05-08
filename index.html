@@ -10,6 +10,8 @@
 
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <script src="https://unpkg.com/lucide@latest"></script>
+<!-- Додано бібліотеку для генерації QR-коду -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
 <style>
     :root {
@@ -42,6 +44,47 @@
         width: 100%; height: 100%; padding: 20px;
     }
     
+    /* Зменшений лічильник у правому верхньому куті */
+    #top-right-counter {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: var(--color-card);
+        padding: 5px 15px 5px 5px;
+        border-radius: 30px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        z-index: 1000;
+    }
+
+    .counter-container {
+        position: relative;
+        width: 44px; height: 44px;
+        border-radius: 50%;
+        background: #f0f4f8;
+        display: flex; align-items: center; justify-content: center;
+        border: 3px solid var(--color-accent);
+        box-shadow: inset 0 0 5px rgba(0,0,0,0.1), 0 0 0 4px rgba(11, 83, 148, 0.1);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .counter-container.pulse {
+        transform: scale(1.15);
+        box-shadow: inset 0 0 5px rgba(0,0,0,0.1), 0 0 0 8px rgba(11, 83, 148, 0.2);
+    }
+
+    #counter {
+        font-size: 1.3rem; font-weight: 900; color: var(--color-accent);
+        line-height: 1; margin-top: 2px;
+    }
+
+    .counter-label {
+        font-size: 0.75rem; font-weight: 800; color: var(--color-text); 
+        text-transform: uppercase; line-height: 1.1; text-align: left;
+    }
+
     .card {
         background: var(--color-card); 
         padding: 2rem; 
@@ -59,29 +102,33 @@
         color: var(--color-text); letter-spacing: 1px;
     }
 
-    .counter-container {
-        position: relative;
-        width: 200px; height: 200px;
-        border-radius: 50%;
-        background: #f0f4f8;
-        display: flex; align-items: center; justify-content: center;
-        border: 8px solid var(--color-accent);
-        box-shadow: inset 0 0 20px rgba(0,0,0,0.1), 0 0 0 10px rgba(11, 83, 148, 0.1);
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-
-    .counter-container.pulse {
-        transform: scale(1.05);
-        box-shadow: inset 0 0 20px rgba(0,0,0,0.1), 0 0 0 20px rgba(11, 83, 148, 0.2);
-    }
-
-    #counter {
-        font-size: 5rem; font-weight: 900; color: var(--color-accent);
-        line-height: 1; margin-top: 5px;
-    }
-
     .subtitle {
         font-size: 0.9rem; font-weight: 600; color: #666; text-transform: uppercase;
+    }
+
+    /* Стилі для QR-коду */
+    #qrcode-box {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 20px;
+        border: 1px solid #e9ecef;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 15px;
+        width: 100%;
+    }
+
+    #qrcode {
+        background: white;
+        padding: 10px;
+        border-radius: 12px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    }
+    
+    #qrcode img {
+        display: block;
+        margin: 0 auto;
     }
 
     #status-badge {
@@ -122,6 +169,14 @@
 </head>
 <body>
 
+<!-- Компактний лічильник у куті -->
+<div id="top-right-counter">
+    <div class="counter-container" id="counter-box">
+        <span id="counter">0</span>
+    </div>
+    <div class="counter-label">Осіб<br>онлайн</div>
+</div>
+
 <div id="ui-layer">
     <div class="card">
         <h1>Онлайн Гравці</h1>
@@ -131,10 +186,11 @@
             <span id="status-text">Підключення...</span>
         </div>
 
-        <div class="counter-container" id="counter-box">
-            <span id="counter">0</span>
+        <!-- Центральний блок тепер містить QR-код -->
+        <div id="qrcode-box">
+            <div id="qrcode"></div>
+            <span class="subtitle">Скануй, щоб приєднатись</span>
         </div>
-        <span class="subtitle">Осіб на сторінці</span>
 
         <div id="team-container">
             Команда: <span id="team-name"></span>
@@ -179,7 +235,22 @@
 
     window.onload = () => {
         initNetwork();
+        generateQR();
     };
+
+    function generateQR() {
+        const url = window.location.href;
+        const qrcodeContainer = document.getElementById('qrcode');
+        qrcodeContainer.innerHTML = ""; 
+        new QRCode(qrcodeContainer, {
+            text: url,
+            width: 200,
+            height: 200,
+            colorDark : "#111111",
+            colorLight : "#ffffff",
+            correctLevel : QRCode.CorrectLevel.L
+        });
+    }
 
     function initNetwork() {
         updateStatus("Пошук мережі...", "loading");
