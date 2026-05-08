@@ -158,31 +158,27 @@
     .status-client { background: #e8f5e9 !important; color: var(--color-success) !important; }
     .status-error { background: #ffebee !important; color: var(--color-danger) !important; }
 
-    /* Оновлені стилі блоку команди */
+    /* Оновлені, симетричні стилі блоку команди та кнопки "Запросити" */
     #team-container {
         display: none; /* JS змінюватиме на flex */
-        align-items: center; justify-content: space-between;
+        align-items: center; justify-content: center; gap: 10px;
         width: 100%; margin-top: 5px; 
-        padding: 10px 16px; border-radius: 12px; font-size: 1.1rem; 
-        font-weight: 800; text-transform: uppercase; letter-spacing: 1px; 
+        padding: 1rem; border-radius: 1rem; font-size: 1.05rem; 
+        font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; 
         transition: all 0.3s ease;
     }
 
-    .team-left {
-        display: flex; align-items: center; gap: 8px;
-    }
-
-    .team-left i {
-        width: 20px; height: 20px;
+    #team-container i, .btn-primary i {
+        width: 22px; height: 22px;
     }
 
     .team-counter-badge {
         background: rgba(127, 127, 127, 0.25);
         color: inherit;
         border-radius: 50%;
-        width: 32px; height: 32px;
+        width: 30px; height: 30px;
         display: flex; align-items: center; justify-content: center;
-        font-size: 1rem; font-weight: 900;
+        font-size: 0.95rem; font-weight: 900;
         border: 1px solid rgba(127, 127, 127, 0.3);
     }
 
@@ -190,10 +186,11 @@
         background: var(--color-accent); 
         color: white; border: none; 
         padding: 1rem; width: 100%;
-        font-size: 1rem; font-family: 'Montserrat', sans-serif; font-weight: 700;
+        font-size: 1.05rem; font-family: 'Montserrat', sans-serif; font-weight: 800;
         border-radius: 1rem; cursor: pointer; 
-        display: flex; align-items: center; justify-content: center; gap: 8px;
+        display: flex; align-items: center; justify-content: center; gap: 10px;
         box-shadow: 0 6px 15px rgba(11, 83, 148, 0.3); text-transform: uppercase;
+        letter-spacing: 0.5px;
         transition: transform 0.1s, background 0.2s;
     }
     .btn-primary:active { transform: scale(0.97); }
@@ -232,10 +229,8 @@
 
         <!-- Блок команди -->
         <div id="team-container">
-            <div class="team-left">
-                <i data-lucide="users"></i>
-                <span id="team-name"></span>
-            </div>
+            <i data-lucide="users"></i>
+            <span id="team-name"></span>
             <div class="team-counter-badge">
                 <span id="team-counter">0</span>
             </div>
