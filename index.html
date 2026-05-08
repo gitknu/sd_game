@@ -160,7 +160,7 @@
 
     /* Оновлені, симетричні стилі блоку команди та кнопки "Запросити" */
     #team-container {
-        display: none; /* JS змінюватиме на flex */
+        display: none; 
         align-items: center; justify-content: center; gap: 10px;
         width: 100%; margin-top: 5px; 
         padding: 1rem; border-radius: 1rem; font-size: 1.05rem; 
@@ -246,9 +246,9 @@
 <script>
     lucide.createIcons();
 
-    // Системні налаштування (перевірка кожні 800мс, втрата хоста - 3 перевірки)
-    const PING_INTERVAL = 800;  
-    const TIMEOUT_LIMIT = 2400;  
+    // Системні налаштування
+    const PING_INTERVAL = 800;  // Чітко кожні 800мс
+    const TIMEOUT_LIMIT = 2400; // Час до видалення неактивного клієнта (3 пінги)
     
     // Налаштування команд
     const TEAMS =[
@@ -258,16 +258,43 @@
         { id: 'blue', name: 'Сині', bg: '#0b5394', color: '#ffffff' }
     ];
 
+    // ==========================================
+    // СИСТЕМА УНІКАЛЬНОЇ ІДЕНТИФІКАЦІЇ
+    // ==========================================
+    function getDeviceUID() {
+        let uid = localStorage.getItem('app_device_uid');
+        if (!uid) {
+            const vendor = navigator.vendor || '';
+            const ua = navigator.userAgent || '';
+            const rand = Math.random().toString(36).substring(2);
+            const time = Date.now().toString();
+            
+            // Проста, але ефективна функція хешування для створення унікального сліду
+            const raw = vendor + ua + rand + time;
+            let hash = 0;
+            for (let i = 0; i < raw.length; i++) {
+                hash = ((hash << 5) - hash) + raw.charCodeAt(i);
+                hash |= 0;
+            }
+            
+            uid = 'uid_' + Math.abs(hash).toString(16) + '_' + rand;
+            localStorage.setItem('app_device_uid', uid);
+        }
+        return uid;
+    }
+    const MY_CLIENT_ID = getDeviceUID();
+
     // Глобальні змінні мережі
     let myPeer = null;
     let hostConnection = null;
     let isHost = false;
-    let activeClients = new Map(); // Використовуємо Map для точного контролю унікальних з'єднань
+    
+    // МАПА УНІКАЛЬНИХ КЛІЄНТІВ (Ключ - MY_CLIENT_ID, повністю унеможливлює дублікати)
+    let activeClientsMap = new Map(); 
     
     // Глобальні змінні гри
     let currentCount = 0;
     let myTeam = null;
-    let currentTeamCounts = {};
 
     let hostActivityInterval = null;
     let clientActivityInterval = null;
@@ -304,26 +331,23 @@
         
         updateStatus("Пошук мережі...", "loading");
         
-        // 1. Намагаємось зайняти головний ID (Стати Хостом)
         myPeer = new Peer(GLOBAL_ROOM_ID);
 
         myPeer.on('open', (id) => {
             isHost = true;
-            activeClients.clear();
+            activeClientsMap.clear();
             updateStatus("Ви - хост", "host");
             
-            // Якщо хост не має команди, даємо йому першу
             if (!myTeam) {
                 myTeam = TEAMS[0];
             }
             updateTeamUI(myTeam);
             
             setupHostLogic();
-            broadcastCount(); // Відразу рахуємо себе
+            broadcastCount(); // Враховуємо себе
         });
 
         myPeer.on('error', (err) => {
-            // ID вже зайнятий - стаємо Клієнтом
             if (err.type === 'unavailable-id') {
                 isHost = false;
                 myPeer.destroy();
@@ -340,88 +364,102 @@
     // ==========================================
     function setupHostLogic() {
         myPeer.on('connection', (conn) => {
-            const peerId = conn.peer;
-            
-            activeClients.set(peerId, {
-                conn: conn,
-                team: null,
-                lastActivity: Date.now(),
-                isOpen: false
-            });
-
-            conn.on('open', () => {
-                const client = activeClients.get(peerId);
-                if (client) {
-                    client.isOpen = true;
-                    client.team = getNextBalancedTeam();
-                    client.lastActivity = Date.now();
-                    conn.send({ type: 'TEAM', value: client.team });
-                    broadcastCount();
-                }
-            });
-
             conn.on('data', (data) => {
-                const client = activeClients.get(peerId);
-                if (client && data.type === 'PONG') {
-                    client.lastActivity = Date.now();
+                if (data.type === 'HELLO') {
+                    const cid = data.clientId;
+                    if (!cid) return; // Ігноруємо без ідентифікатора
+
+                    let assignedTeam;
+                    if (activeClientsMap.has(cid)) {
+                        // ГРАВЕЦЬ ПЕРЕПІДКЛЮЧИВСЯ (Оновив сторінку)
+                        const existing = activeClientsMap.get(cid);
+                        existing.conn = conn; // Просто підміняємо канал зв'язку
+                        existing.lastActivity = Date.now();
+                        assignedTeam = existing.team;
+                    } else {
+                        // НОВИЙ УНІКАЛЬНИЙ ГРАВЕЦЬ
+                        // Якщо під час міграції хоста клієнт передає свою стару команду - залишаємо її
+                        if (data.teamId) {
+                            assignedTeam = TEAMS.find(t => t.id === data.teamId) || getNextBalancedTeam();
+                        } else {
+                            assignedTeam = getNextBalancedTeam();
+                        }
+                        
+                        activeClientsMap.set(cid, {
+                            conn: conn,
+                            team: assignedTeam,
+                            lastActivity: Date.now()
+                        });
+                    }
+                    
+                    conn.send({ type: 'TEAM', value: assignedTeam });
+                    broadcastCount();
+                } 
+                else if (data.type === 'PONG') {
+                    const cid = data.clientId;
+                    if (cid && activeClientsMap.has(cid)) {
+                        activeClientsMap.get(cid).lastActivity = Date.now();
+                    }
                 }
             });
 
-            conn.on('close', () => removeClient(peerId));
-            conn.on('error', () => removeClient(peerId));
+            // Очищення при прямому закритті сокета (для швидкості)
+            conn.on('close', () => {
+                for (const [cid, clientData] of activeClientsMap.entries()) {
+                    if (clientData.conn === conn) {
+                        activeClientsMap.delete(cid);
+                        broadcastCount();
+                        break;
+                    }
+                }
+            });
         });
 
-        // Хост що 800мс перевіряє життєдіяльність всіх та розсилає актуальні лічильники
+        // Строгий цикл пінгування унікальних гравців
         hostActivityInterval = setInterval(() => {
             if (!isHost) return;
             const now = Date.now();
+            let stateChanged = false;
 
-            for (const [peerId, client] of activeClients.entries()) {
+            for (const [cid, client] of activeClientsMap.entries()) {
                 if (now - client.lastActivity > TIMEOUT_LIMIT) {
-                    if (client.conn.open) client.conn.close();
-                    activeClients.delete(peerId);
-                } else if (client.isOpen) {
+                    // Користувач дійсно відвалився (вийшов з сайту)
+                    if (client.conn && client.conn.open) client.conn.close();
+                    activeClientsMap.delete(cid);
+                    stateChanged = true;
+                } else if (client.conn && client.conn.open) {
                     client.conn.send({ type: 'PING' });
                 }
             }
             
-            broadcastCount();
+            if (stateChanged) broadcastCount();
         }, PING_INTERVAL);
-    }
-
-    function removeClient(peerId) {
-        if (activeClients.has(peerId)) {
-            activeClients.delete(peerId);
-            broadcastCount();
-        }
     }
 
     function broadcastCount() {
         if (!isHost) return;
 
-        let totalPlayers = 1; // Хост завжди рахує себе
+        let totalPlayers = 1; // Хост = 1
         const teamCounts = { 'red': 0, 'white': 0, 'black': 0, 'blue': 0 };
         
         if (myTeam) teamCounts[myTeam.id]++;
         
-        for (const client of activeClients.values()) {
-            if (client.isOpen) {
-                totalPlayers++;
-                if (client.team) {
-                    teamCounts[client.team.id]++;
-                }
+        for (const client of activeClientsMap.values()) {
+            totalPlayers++;
+            if (client.team) {
+                teamCounts[client.team.id]++;
             }
         }
 
-        // Оновлюємо UI самого хоста
+        // Оновлюємо UI хоста
         updateCount(totalPlayers);
         if (myTeam) {
             updateTeamCountUI(teamCounts[myTeam.id]);
         }
 
-        // Розсилаємо абсолютно точну кількість клієнтам
-        for (const client of activeClients.values()) {
-            if (client.isOpen) {
+        // Розсилаємо всім клієнтам
+        for (const client of activeClientsMap.values()) {
+            if (client.conn && client.conn.open) {
                 client.conn.send({ 
                     type: 'COUNT', 
                     value: totalPlayers, 
@@ -436,8 +474,8 @@
         
         if (myTeam) teamCounts[myTeam.id]++;
         
-        for (const client of activeClients.values()) {
-            if (client.isOpen && client.team) {
+        for (const client of activeClientsMap.values()) {
+            if (client.team) {
                 teamCounts[client.team.id]++;
             }
         }
@@ -468,6 +506,13 @@
                 updateStatus("Онлайн", "client");
                 lastHostActivity = Date.now();
                 
+                // Миттєво надсилаємо свій унікальний ідентифікатор хосту
+                hostConnection.send({ 
+                    type: 'HELLO', 
+                    clientId: MY_CLIENT_ID,
+                    teamId: myTeam ? myTeam.id : null // Якщо перепідключаємось - просимо стару команду
+                });
+                
                 clearInterval(clientActivityInterval);
                 clientActivityInterval = setInterval(() => {
                     if (Date.now() - lastHostActivity > TIMEOUT_LIMIT) {
@@ -477,26 +522,19 @@
             });
 
             hostConnection.on('data', (data) => {
-                lastHostActivity = Date.now(); // Будь-які дані від хоста означають, що він живий
+                lastHostActivity = Date.now();
 
                 if (data.type === 'COUNT') {
                     updateCount(data.value);
-                    if (data.teamCounts) {
-                        currentTeamCounts = data.teamCounts;
-                        if (myTeam) {
-                            updateTeamCountUI(currentTeamCounts[myTeam.id]);
-                        }
+                    if (data.teamCounts && myTeam) {
+                        updateTeamCountUI(data.teamCounts[myTeam.id]);
                     }
                 } else if (data.type === 'TEAM') {
                     myTeam = data.value;
                     updateTeamUI(myTeam);
-                    if (currentTeamCounts && currentTeamCounts[myTeam.id] !== undefined) {
-                        updateTeamCountUI(currentTeamCounts[myTeam.id]);
-                    } else {
-                        updateTeamCountUI(1);
-                    }
                 } else if (data.type === 'PING') {
-                    hostConnection.send({ type: 'PONG' });
+                    // Відповідаємо своїм ID, щоб довести, що ми живі
+                    hostConnection.send({ type: 'PONG', clientId: MY_CLIENT_ID });
                 }
             });
 
@@ -504,9 +542,7 @@
             hostConnection.on('error', handleHostDrop);
         });
 
-        myPeer.on('error', () => {
-            handleHostDrop();
-        });
+        myPeer.on('error', handleHostDrop);
     }
 
     function handleHostDrop() {
@@ -526,11 +562,10 @@
             myPeer = null;
         }
 
-        // Рандомна затримка перед спробою стати новим хостом (Leader Election)
         const randomBackoff = Math.floor(Math.random() * 1500) + 500;
         setTimeout(() => {
             isReconnecting = false;
-            initNetwork();
+            initNetwork(); // Хтось стане новим хостом
         }, randomBackoff);
     }
 
@@ -555,7 +590,8 @@
     function updateTeamCountUI(count) {
         const teamCounterEl = document.getElementById('team-counter');
         if (teamCounterEl) {
-            teamCounterEl.innerText = count || 0;
+            // Гарантуємо, що завжди показується як мінімум 1 (ми самі), якщо ми вже у команді
+            teamCounterEl.innerText = count > 0 ? count : 1;
         }
     }
 
@@ -564,14 +600,14 @@
         const container = document.getElementById('team-container');
         const nameEl = document.getElementById('team-name');
         
-        container.style.display = 'flex'; // Тепер це flexbox
+        container.style.display = 'flex';
         container.style.backgroundColor = team.bg;
         container.style.color = team.color;
         
         if (team.border) {
             container.style.border = team.border;
         } else {
-            container.style.border = '2px solid transparent'; // Щоб не стрибав розмір
+            container.style.border = '2px solid transparent';
         }
         
         nameEl.innerText = team.name;
