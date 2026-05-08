@@ -199,7 +199,7 @@
                 <div class="counter-container" id="counter-box">
                     <span id="counter">0</span>
                 </div>
-                <div class="counter-label">Осіб є<br>онлайн</div>
+                <div class="counter-label">Осіб<br>у грі</div>
             </div>
         </div>
 
@@ -401,7 +401,7 @@
             hostConnection = myPeer.connect(GLOBAL_ROOM_ID, { reliable: true });
 
             hostConnection.on('open', () => {
-                updateStatus("Підключено", "client");
+                updateStatus("Онлайн", "client");
                 lastHostActivity = Date.now();
                 
                 // Активна перевірка життєдіяльності хоста
