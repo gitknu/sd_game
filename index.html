@@ -21,7 +21,7 @@
         --color-success: #2e7d32;
         --color-danger: #b80000;
         --color-text: #222222;
-        --shadow-large: 0 10px 30px rgba(0,0,0,0.5);
+        --shadow-large: 0 10px 40px rgba(0,0,0,0.6);
     }
 
     * { box-sizing: border-box; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
@@ -32,27 +32,33 @@
         background-image: radial-gradient(circle at center, #2a2a2a 0%, #111111 100%);
         font-family: 'Montserrat', sans-serif;
         color: var(--color-text);
-        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-        height: 100dvh; width: 100%;
+        
+        /* Адаптивна висота дозволяє скролити на дуже малих екранах */
+        min-height: 100dvh;
+        width: 100%;
         display: flex; align-items: center; justify-content: center;
-        overflow: hidden; 
+        overflow-x: hidden;
     }
 
     #ui-layer {
         display: flex; flex-direction: column; align-items: center; justify-content: center;
-        width: 100%; height: 100%; padding: 20px;
+        width: 100%; min-height: 100dvh; 
+        padding: clamp(15px, 4vw, 30px);
+        position: relative;
     }
     
     .card {
         background: var(--color-card); 
-        padding: 1.5rem; 
-        border-radius: 2rem;
+        padding: clamp(1.2rem, 5vw, 1.8rem); 
+        border-radius: clamp(1.5rem, 6vw, 2rem);
         text-align: center; 
         width: 100%; max-width: 400px;
         box-shadow: var(--shadow-large);
         display: flex; flex-direction: column; 
-        align-items: center; gap: 15px;
+        align-items: center; 
+        gap: clamp(12px, 3vh, 18px);
         position: relative;
+        z-index: 10;
     }
 
     /* Шапка картки для заголовка та лічильника */
@@ -69,7 +75,7 @@
         display: flex;
         flex-direction: column;
         align-items: flex-start;
-        gap: 8px;
+        gap: clamp(4px, 1.5vh, 8px);
         flex: 1;
     }
 
@@ -85,13 +91,13 @@
     }
 
     h1 {
-        margin: 0; font-size: 1.2rem; font-weight: 800; text-transform: uppercase;
-        color: var(--color-text); letter-spacing: 0.5px; text-align: left;
+        margin: 0; font-size: clamp(1.1rem, 5vw, 1.3rem); font-weight: 800; text-transform: uppercase;
+        color: var(--color-text); letter-spacing: 0.5px; text-align: left; line-height: 1.1;
     }
 
     .counter-container {
         position: relative;
-        width: 40px; height: 40px;
+        width: clamp(38px, 10vw, 44px); height: clamp(38px, 10vw, 44px);
         border-radius: 50%;
         background: #f0f4f8;
         display: flex; align-items: center; justify-content: center;
@@ -106,50 +112,58 @@
     }
 
     #counter {
-        font-size: 1.2rem; font-weight: 900; color: var(--color-accent);
+        font-size: clamp(1.1rem, 4vw, 1.3rem); font-weight: 900; color: var(--color-accent);
         line-height: 1; margin-top: 2px;
     }
 
     .counter-label {
-        font-size: 0.7rem; font-weight: 800; color: #555; 
+        font-size: clamp(0.6rem, 2.5vw, 0.7rem); font-weight: 800; color: #555; 
         text-transform: uppercase; line-height: 1.1; text-align: left;
     }
 
     .subtitle {
-        font-size: 0.85rem; font-weight: 700; color: #666; text-transform: uppercase;
+        font-size: clamp(0.75rem, 3.5vw, 0.85rem); font-weight: 700; color: #666; text-transform: uppercase;
     }
 
-    /* Стилі для QR-коду */
+    /* Стилі для QR-коду - адаптивні */
     #qrcode-box {
         background: #f8f9fa;
-        padding: 15px;
-        border-radius: 1.5rem;
+        padding: clamp(10px, 3vh, 15px);
+        border-radius: clamp(1rem, 5vw, 1.5rem);
         border: 1px solid #e9ecef;
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 12px;
+        gap: clamp(8px, 2vh, 12px);
         width: 100%;
     }
 
     #qrcode {
         background: white;
-        padding: 10px;
+        padding: clamp(8px, 2.5vw, 12px);
         border-radius: 12px;
         box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        width: 100%;
+        display: flex;
+        justify-content: center;
     }
     
-    #qrcode img {
+    /* Змушуємо QR-код стискатися на малих екранах */
+    #qrcode img, #qrcode canvas {
         display: block;
         margin: 0 auto;
+        width: 100% !important;
+        max-width: 180px;
+        height: auto !important;
     }
 
     #status-badge {
         display: inline-flex; align-items: center; gap: 4px;
         padding: 5px 10px; border-radius: 20px;
-        font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+        font-size: clamp(0.6rem, 3vw, 0.7rem); font-weight: 700; text-transform: uppercase;
         background: #e0e0e0; color: #555;
         transition: all 0.3s ease;
+        white-space: nowrap;
     }
 
     #status-badge i { width: 12px; height: 12px; }
@@ -158,41 +172,42 @@
     .status-client { background: #e8f5e9 !important; color: var(--color-success) !important; }
     .status-error { background: #ffebee !important; color: var(--color-danger) !important; }
 
-    /* Оновлені, симетричні стилі блоку команди та кнопки "Запросити" */
     #team-container {
         display: none; 
         align-items: center; justify-content: center; gap: 10px;
         width: 100%; margin-top: 5px; 
-        padding: 1rem; border-radius: 1rem; font-size: 1.05rem; 
+        padding: clamp(0.8rem, 3vh, 1rem); 
+        border-radius: 1rem; 
+        font-size: clamp(0.95rem, 4vw, 1.05rem); 
         font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; 
         transition: all 0.3s ease;
     }
 
     #team-container i, .btn-primary i {
-        width: 22px; height: 22px;
+        width: clamp(18px, 5vw, 22px); height: clamp(18px, 5vw, 22px);
     }
 
     .team-counter-badge {
         background: rgba(127, 127, 127, 0.25);
         color: inherit;
         border-radius: 50%;
-        width: 30px; height: 30px;
+        width: clamp(26px, 8vw, 30px); height: clamp(26px, 8vw, 30px);
         display: flex; align-items: center; justify-content: center;
-        font-size: 0.95rem; font-weight: 900;
+        font-size: clamp(0.85rem, 3.5vw, 0.95rem); font-weight: 900;
         border: 1px solid rgba(127, 127, 127, 0.3);
     }
 
-    /* Налаштування хоста (Кількість команд) */
     #host-controls {
         display: none; 
         flex-direction: column; align-items: center; gap: 10px;
         width: 100%; margin-top: 5px;
-        padding: 15px; background: #f8f9fa; border-radius: 1.5rem;
+        padding: clamp(10px, 3vh, 15px); 
+        background: #f8f9fa; border-radius: 1.5rem;
         border: 1px solid #e9ecef;
     }
 
     .host-controls-title {
-        font-size: 0.85rem; font-weight: 700; color: #666; text-transform: uppercase;
+        font-size: clamp(0.75rem, 3vw, 0.85rem); font-weight: 700; color: #666; text-transform: uppercase;
     }
 
     .host-controls-btns {
@@ -200,9 +215,9 @@
     }
 
     .btn-team-limit {
-        flex: 1; padding: 10px 0; border: 2px solid var(--color-accent);
+        flex: 1; padding: clamp(8px, 2.5vh, 10px) 0; border: 2px solid var(--color-accent);
         border-radius: 1rem; background: transparent; color: var(--color-accent);
-        font-size: 1.05rem; font-family: 'Montserrat', sans-serif; font-weight: 800; 
+        font-size: clamp(0.95rem, 4vw, 1.05rem); font-family: 'Montserrat', sans-serif; font-weight: 800; 
         cursor: pointer; transition: all 0.2s;
     }
 
@@ -215,16 +230,28 @@
     .btn-primary {
         background: var(--color-accent); 
         color: white; border: none; 
-        padding: 1rem; width: 100%;
-        font-size: 1.05rem; font-family: 'Montserrat', sans-serif; font-weight: 800;
+        padding: clamp(0.8rem, 3vh, 1rem); width: 100%;
+        font-size: clamp(0.95rem, 4vw, 1.05rem); font-family: 'Montserrat', sans-serif; font-weight: 800;
         border-radius: 1rem; cursor: pointer; 
         display: flex; align-items: center; justify-content: center; gap: 10px;
         box-shadow: 0 6px 15px rgba(11, 83, 148, 0.3); text-transform: uppercase;
         letter-spacing: 0.5px;
         transition: transform 0.1s, background 0.2s;
     }
+    
     .btn-primary:active { transform: scale(0.97); }
     .btn-primary:hover { background: var(--color-accent-hover); }
+
+    /* Мінімалістичний індикатор версії */
+    .version-tag {
+        margin-top: clamp(15px, 4vh, 25px);
+        font-size: 0.65rem;
+        font-weight: 600;
+        color: rgba(255, 255, 255, 0.35);
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        z-index: 5;
+    }
 
 </style>
 </head>
@@ -281,6 +308,9 @@
             <i data-lucide="share-2"></i> ЗАПРОСИТИ
         </button>
     </div>
+    
+    <!-- Версія інструмента -->
+    <div class="version-tag">v1.3.0 Stable</div>
 </div>
 
 <script>
