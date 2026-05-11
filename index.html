@@ -182,6 +182,36 @@
         border: 1px solid rgba(127, 127, 127, 0.3);
     }
 
+    /* Налаштування хоста (Кількість команд) */
+    #host-controls {
+        display: none; 
+        flex-direction: column; align-items: center; gap: 10px;
+        width: 100%; margin-top: 5px;
+        padding: 15px; background: #f8f9fa; border-radius: 1.5rem;
+        border: 1px solid #e9ecef;
+    }
+
+    .host-controls-title {
+        font-size: 0.85rem; font-weight: 700; color: #666; text-transform: uppercase;
+    }
+
+    .host-controls-btns {
+        display: flex; gap: 10px; width: 100%;
+    }
+
+    .btn-team-limit {
+        flex: 1; padding: 10px 0; border: 2px solid var(--color-accent);
+        border-radius: 1rem; background: transparent; color: var(--color-accent);
+        font-size: 1.05rem; font-family: 'Montserrat', sans-serif; font-weight: 800; 
+        cursor: pointer; transition: all 0.2s;
+    }
+
+    .btn-team-limit.active {
+        background: var(--color-accent); color: white;
+    }
+
+    .btn-team-limit:active { transform: scale(0.95); }
+
     .btn-primary {
         background: var(--color-accent); 
         color: white; border: none; 
@@ -233,6 +263,16 @@
             <span id="team-name"></span>
             <div class="team-counter-badge">
                 <span id="team-counter">0</span>
+            </div>
+        </div>
+
+        <!-- Панель керування хоста -->
+        <div id="host-controls">
+            <span class="host-controls-title">Кількість команд</span>
+            <div class="host-controls-btns">
+                <button class="btn-team-limit" id="btn-limit-2" onclick="setTeamLimit(2)">2</button>
+                <button class="btn-team-limit" id="btn-limit-3" onclick="setTeamLimit(3)">3</button>
+                <button class="btn-team-limit active" id="btn-limit-4" onclick="setTeamLimit(4)">4</button>
             </div>
         </div>
 
@@ -296,6 +336,7 @@
     // Глобальні змінні гри
     let currentCount = 0;
     let myTeam = null;
+    let activeTeamLimit = 4; // За замовчуванням 4 команди
 
     let hostActivityInterval = null;
     let clientActivityInterval = null;
@@ -357,7 +398,8 @@
             activeClientsMap.clear();
             updateStatus("Ви - хост", "host");
             
-            if (!myTeam) {
+            // Якщо команда не валідна через зміну ліміту або її ще немає
+            if (!myTeam || TEAMS.indexOf(myTeam) >= activeTeamLimit) {
                 myTeam = TEAMS[0];
             }
             updateTeamUI(myTeam);
@@ -423,6 +465,9 @@
     // ЛОГІКА ХОСТА
     // ==========================================
     function setupHostLogic() {
+        document.getElementById('host-controls').style.display = 'flex';
+        updateHostControlsUI();
+
         myPeer.on('connection', (conn) => {
             conn.on('data', (data) => {
                 if (data.type === 'HELLO') {
@@ -436,10 +481,19 @@
                         existing.conn = conn; 
                         existing.lastActivity = Date.now();
                         assignedTeam = existing.team;
+                        
+                        // Якщо команда більше не доступна через змінений ліміт
+                        if (TEAMS.indexOf(assignedTeam) >= activeTeamLimit) {
+                            assignedTeam = getNextBalancedTeam();
+                            existing.team = assignedTeam;
+                        }
                     } else {
                         // Новий клієнт (або старий при зміні хоста)
                         if (data.teamId) {
-                            assignedTeam = TEAMS.find(t => t.id === data.teamId) || getNextBalancedTeam();
+                            assignedTeam = TEAMS.find(t => t.id === data.teamId);
+                            if (!assignedTeam || TEAMS.indexOf(assignedTeam) >= activeTeamLimit) {
+                                assignedTeam = getNextBalancedTeam();
+                            }
                         } else {
                             assignedTeam = getNextBalancedTeam();
                         }
@@ -463,7 +517,7 @@
             });
 
             conn.on('close', () => {
-                for (const [cid, clientData] of activeClientsMap.entries()) {
+                for (const[cid, clientData] of activeClientsMap.entries()) {
                     if (clientData.conn === conn) {
                         activeClientsMap.delete(cid);
                         broadcastCount();
@@ -518,7 +572,8 @@
                 client.conn.send({ 
                     type: 'COUNT', 
                     value: totalPlayers, 
-                    teamCounts: teamCounts 
+                    teamCounts: teamCounts,
+                    activeTeamLimit: activeTeamLimit // Синхронізуємо ліміт з усіма
                 });
             }
         }
@@ -538,7 +593,8 @@
         let minTeam = TEAMS[0];
         let minCount = teamCounts[TEAMS[0].id];
 
-        for (let i = 1; i < TEAMS.length; i++) {
+        // Перевіряємо тільки в межах активного ліміту команд
+        for (let i = 1; i < activeTeamLimit; i++) {
             if (teamCounts[TEAMS[i].id] < minCount) {
                 minTeam = TEAMS[i];
                 minCount = teamCounts[TEAMS[i].id];
@@ -547,11 +603,45 @@
         return minTeam;
     }
 
+    // Зміна кількості команд (Тільки для хоста)
+    function setTeamLimit(limit) {
+        if (!isHost) return;
+        activeTeamLimit = limit;
+        updateHostControlsUI();
+        
+        // Перевіряємо команду хоста
+        if (TEAMS.indexOf(myTeam) >= activeTeamLimit) {
+            myTeam = getNextBalancedTeam();
+            updateTeamUI(myTeam);
+        }
+        
+        // Перевіряємо та перерозподіляємо клієнтів
+        let stateChanged = false;
+        for (const [cid, client] of activeClientsMap.entries()) {
+            if (TEAMS.indexOf(client.team) >= activeTeamLimit) {
+                client.team = getNextBalancedTeam();
+                if (client.conn && client.conn.open) {
+                    client.conn.send({ type: 'TEAM', value: client.team });
+                }
+                stateChanged = true;
+            }
+        }
+        
+        broadcastCount();
+    }
+
+    function updateHostControlsUI() {
+        document.getElementById('btn-limit-2').classList.toggle('active', activeTeamLimit === 2);
+        document.getElementById('btn-limit-3').classList.toggle('active', activeTeamLimit === 3);
+        document.getElementById('btn-limit-4').classList.toggle('active', activeTeamLimit === 4);
+    }
+
     // ==========================================
     // ЛОГІКА КЛІЄНТА
     // ==========================================
     function setupClientLogic() {
         isReconnecting = false;
+        document.getElementById('host-controls').style.display = 'none';
         updateStatus("Онлайн", "client");
         lastHostActivity = Date.now();
         
@@ -576,6 +666,10 @@
                 updateCount(data.value);
                 if (data.teamCounts && myTeam) {
                     updateTeamCountUI(data.teamCounts[myTeam.id]);
+                }
+                if (data.activeTeamLimit && data.activeTeamLimit !== activeTeamLimit) {
+                    activeTeamLimit = data.activeTeamLimit;
+                    updateHostControlsUI(); // Запам'ятовуємо на випадок, якщо станемо хостом
                 }
             } else if (data.type === 'TEAM') {
                 myTeam = data.value;
