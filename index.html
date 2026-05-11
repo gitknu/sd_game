@@ -142,7 +142,7 @@
         margin-top: -2px;
     }
 
-    /* Стилі для QR-коду - Жорстко адаптивні до висоти екрана */
+    /* Стилі для подвійного QR-коду */
     #qrcode-box {
         background: #f8f9fa;
         padding: clamp(10px, 2.5vh, 15px);
@@ -155,22 +155,46 @@
         width: 100%;
     }
 
-    #qrcode {
+    .qr-row {
+        display: flex;
+        gap: clamp(8px, 2vw, 12px);
+        width: 100%;
+        justify-content: center;
+    }
+
+    .qr-item {
         background: white;
-        padding: clamp(8px, 2vh, 12px);
+        padding: clamp(6px, 1.5vh, 10px);
         border-radius: 12px;
         box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: clamp(4px, 1vh, 8px);
+        flex: 1; 
+        width: 50%;
+    }
+
+    .qr-item-title {
+        font-size: clamp(0.55rem, 2.2vw, 0.65rem);
+        font-weight: 800;
+        color: var(--color-accent);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .qr-render {
         width: 100%;
         display: flex;
         justify-content: center;
     }
     
-    /* Максимальний розмір QR-коду тепер залежить від висоти (vh), щоб не видавлювати кнопки */
-    #qrcode img, #qrcode canvas {
+    /* Максимальний розмір QR-коду підлаштовується, щоб два коди вмістилися поруч */
+    .qr-render img, .qr-render canvas {
         display: block;
         margin: 0 auto;
         width: 100% !important;
-        max-width: clamp(130px, 25vh, 180px);
+        max-width: clamp(80px, 18vh, 130px);
         height: auto !important;
     }
 
@@ -298,7 +322,7 @@
 </head>
 <body>
 
-<div class="version-tag">v2.0</div>
+<div class="version-tag">v2.1</div>
 
 <div id="ui-layer">
     <div class="card">
@@ -321,9 +345,18 @@
             </div>
         </div>
 
-        <!-- Центральний блок: QR-код -->
+        <!-- Центральний блок: 2 QR-коди -->
         <div id="qrcode-box">
-            <div id="qrcode"></div>
+            <div class="qr-row">
+                <div class="qr-item">
+                    <span class="qr-item-title">Кімната</span>
+                    <div id="qrcode-url" class="qr-render"></div>
+                </div>
+                <div class="qr-item">
+                    <span class="qr-item-title">Мій ID</span>
+                    <div id="qrcode-id" class="qr-render"></div>
+                </div>
+            </div>
             <span class="subtitle">Скануйте, щоб приєднатись</span>
         </div>
 
@@ -429,10 +462,24 @@
 
     function generateQR() {
         const url = window.location.href;
-        const qrcodeContainer = document.getElementById('qrcode');
-        qrcodeContainer.innerHTML = ""; 
-        new QRCode(qrcodeContainer, {
+        
+        // QR-код для посилання (Кімната)
+        const qrcodeUrlContainer = document.getElementById('qrcode-url');
+        qrcodeUrlContainer.innerHTML = ""; 
+        new QRCode(qrcodeUrlContainer, {
             text: url,
+            width: 180,
+            height: 180,
+            colorDark : "#111111",
+            colorLight : "#ffffff",
+            correctLevel : QRCode.CorrectLevel.L
+        });
+
+        // QR-код для унікального ідентифікатора (Мій ID)
+        const qrcodeIdContainer = document.getElementById('qrcode-id');
+        qrcodeIdContainer.innerHTML = ""; 
+        new QRCode(qrcodeIdContainer, {
+            text: MY_CLIENT_ID,
             width: 180,
             height: 180,
             colorDark : "#111111",
