@@ -106,9 +106,9 @@
     }
 
     #scanner-box {
-        width: clamp(48px, 14vw, 64px); /* Трохи ширше */
-        height: clamp(38px, 11vw, 48px); /* Трохи вище */
-        border-radius: 10px; /* Заокруглений прямокутник, а не коло */
+        width: clamp(48px, 14vw, 64px); 
+        height: clamp(38px, 11vw, 48px); 
+        border-radius: 10px; 
         overflow: hidden;
         border: 3px solid #e9ecef;
         background: #111;
@@ -123,16 +123,24 @@
         width: 100%;
         height: 100%;
         object-fit: cover;
-        /* Дзеркальне відображення прибрано для основної камери */
     }
 
-    /* Анімація успішного сканування */
+    /* Анімації результатів сканування */
     .scan-success-blink {
-        animation: scan-glow 0.6s ease-out;
+        animation: scan-glow-green 0.6s ease-out;
     }
 
-    @keyframes scan-glow {
+    .scan-error-blink {
+        animation: scan-glow-red 0.6s ease-out;
+    }
+
+    @keyframes scan-glow-green {
         0% { border-color: #4caf50; box-shadow: 0 0 15px #4caf50, inset 0 0 10px #4caf50; }
+        100% { border-color: #e9ecef; box-shadow: inset 0 0 5px rgba(0,0,0,0.5); }
+    }
+
+    @keyframes scan-glow-red {
+        0% { border-color: #e53935; box-shadow: 0 0 15px #e53935, inset 0 0 10px #e53935; }
         100% { border-color: #e9ecef; box-shadow: inset 0 0 5px rgba(0,0,0,0.5); }
     }
 
@@ -230,7 +238,6 @@
         justify-content: center;
     }
     
-    /* Максимальний розмір QR-коду підлаштовується, щоб два коди вмістилися поруч */
     .qr-render img, .qr-render canvas {
         display: block;
         margin: 0 auto;
@@ -363,7 +370,7 @@
 </head>
 <body>
 
-<div class="version-tag">v2.3</div>
+<div class="version-tag">v2.4</div>
 
 <div id="ui-layer">
     <div class="card">
@@ -478,13 +485,15 @@
     }
     const MY_CLIENT_ID = getDeviceUID();
 
-    // Глобальні змінні
+    // Глобальні змінні мережі
     let myPeer = null;
     let hostConnection = null;
     let isHost = false;
     let currentSlot = 0;
     
     let activeClientsMap = new Map(); 
+    let globalPlayersMap = {}; // Сховище для відстеження всіх ідентифікаторів у кімнаті
+    
     let currentCount = 0;
     let myTeam = null;
     let activeTeamLimit = 2; 
@@ -517,7 +526,6 @@
         let scanResetTimeout = null;
         let lastTickTime = 0;
 
-        // Використовуємо задню (основну) камеру: facingMode: "environment"
         navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
             .then(function(stream) {
                 video.srcObject = stream;
@@ -529,7 +537,6 @@
 
         function tick(time) {
             if (video.readyState === video.HAVE_ENOUGH_DATA) {
-                // Перевіряємо відео лише 4 рази на секунду (економія ресурсів)
                 if (time - lastTickTime > 250) { 
                     lastTickTime = time;
                     canvasElement.height = video.videoHeight;
@@ -543,15 +550,24 @@
                     
                     if (code) {
                         const txt = code.data;
-                        // Реагуємо ТІЛЬКИ на унікальні ID гравців (uid_)
                         if (txt.startsWith('uid_') && txt !== lastScannedId) {
                             lastScannedId = txt;
                             
-                            // Анімація блимання зеленим
                             const scannerBox = document.getElementById('scanner-box');
-                            scannerBox.classList.remove('scan-success-blink');
-                            void scannerBox.offsetWidth; // Примусовий reflow для рестарту анімації
-                            scannerBox.classList.add('scan-success-blink');
+                            scannerBox.classList.remove('scan-success-blink', 'scan-error-blink');
+                            void scannerBox.offsetWidth; // Примусовий reflow
+                            
+                            // Перевірка команди відсканованого гравця
+                            const scannedTeamId = globalPlayersMap[txt];
+                            const myTeamId = myTeam ? myTeam.id : null;
+
+                            if (scannedTeamId && scannedTeamId === myTeamId) {
+                                // Гравець своєї команди - Блимаємо зеленим
+                                scannerBox.classList.add('scan-success-blink');
+                            } else {
+                                // Гравець іншої команди (або не знайдено) - Блимаємо червоним
+                                scannerBox.classList.add('scan-error-blink');
+                            }
 
                             clearTimeout(scanResetTimeout);
                             scanResetTimeout = setTimeout(() => { lastScannedId = null; }, 2000);
@@ -643,6 +659,7 @@
             isHost = true;
             isReconnecting = false;
             activeClientsMap.clear();
+            globalPlayersMap = {};
             updateStatus("Ви - хост", "host");
             
             if (isAutoTeamLimit) {
@@ -812,7 +829,7 @@
             if (!isHost) return;
             const now = Date.now();
 
-            for (const[cid, client] of activeClientsMap.entries()) {
+            for (const [cid, client] of activeClientsMap.entries()) {
                 if (now - client.lastActivity > TIMEOUT_LIMIT) {
                     if (client.conn && client.conn.open) client.conn.close();
                     activeClientsMap.delete(cid);
@@ -840,15 +857,23 @@
         let currentTotal = 1; 
         const teamCounts = { 'red': 0, 'white': 0, 'black': 0, 'blue': 0 };
         
-        if (myTeam) teamCounts[myTeam.id]++;
+        // Збір мапи всіх гравців для розсилки (Синхронізація команд)
+        let playersMap = {};
         
-        for (const client of activeClientsMap.values()) {
+        if (myTeam) {
+            teamCounts[myTeam.id]++;
+            playersMap[MY_CLIENT_ID] = myTeam.id;
+        }
+        
+        for (const [cid, client] of activeClientsMap.entries()) {
             currentTotal++;
             if (client.team) {
                 teamCounts[client.team.id]++;
+                playersMap[cid] = client.team.id;
             }
         }
 
+        globalPlayersMap = playersMap; // Оновлюємо власну мапу (хоста)
         updateCount(currentTotal);
         if (myTeam) {
             updateTeamCountUI(teamCounts[myTeam.id]);
@@ -861,7 +886,8 @@
                     value: currentTotal, 
                     teamCounts: teamCounts,
                     activeTeamLimit: activeTeamLimit,
-                    isAutoTeamLimit: isAutoTeamLimit
+                    isAutoTeamLimit: isAutoTeamLimit,
+                    playersMap: playersMap
                 });
             }
         }
@@ -968,6 +994,9 @@
                 if (data.activeTeamLimit !== undefined && data.activeTeamLimit !== activeTeamLimit) {
                     activeTeamLimit = data.activeTeamLimit;
                     updateHostControlsUI(); 
+                }
+                if (data.playersMap) {
+                    globalPlayersMap = data.playersMap; // Синхронізація команд усіх гравців
                 }
             } else if (data.type === 'TEAM') {
                 myTeam = data.value;
