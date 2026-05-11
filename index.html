@@ -286,10 +286,10 @@
 <script>
     lucide.createIcons();
 
-    // Системні налаштування
-    const PING_INTERVAL = 800;  
-    const TIMEOUT_LIMIT = 2400; 
-    const MAX_SLOTS = 20;       // Запобіжник для системи кімнат-поколінь
+    // Системні налаштування (Прискорені для миттєвої реакції)
+    const PING_INTERVAL = 400;  
+    const TIMEOUT_LIMIT = 1500; 
+    const MAX_SLOTS = 20;       
     
     // Налаштування команд
     const TEAMS =[
@@ -340,6 +340,7 @@
 
     let hostActivityInterval = null;
     let clientActivityInterval = null;
+    let mergeInterval = null; // Інтервал злиття розбитих кімнат
     let lastHostActivity = Date.now();
     let isReconnecting = false;
 
@@ -372,7 +373,7 @@
     function initNetwork(slot = 0) {
         if (slot > MAX_SLOTS) {
             updateStatus("Перепідключення...", "error");
-            setTimeout(() => initNetwork(0), 4000); // Починаємо коло заново
+            setTimeout(() => initNetwork(0), 2000); 
             return;
         }
 
@@ -381,6 +382,7 @@
 
         clearInterval(hostActivityInterval);
         clearInterval(clientActivityInterval);
+        clearInterval(mergeInterval);
         
         if (myPeer) {
             myPeer.destroy();
@@ -392,13 +394,23 @@
         // КРОК 1: Намагаємось стати ХОСТОМ у поточному слоті
         myPeer = new Peer(targetRoomId);
 
+        // БЕЗШОВНЕ ВІДНОВЛЕННЯ: Якщо падає сервер PeerJS, не руйнуємо P2P-зв'язок!
+        myPeer.on('disconnected', () => {
+            if (myPeer && !myPeer.destroyed && !myPeer.isReconnecting) {
+                myPeer.isReconnecting = true;
+                setTimeout(() => {
+                    if (myPeer && !myPeer.destroyed) myPeer.reconnect();
+                    myPeer.isReconnecting = false;
+                }, 500);
+            }
+        });
+
         myPeer.on('open', (id) => {
             isHost = true;
             isReconnecting = false;
             activeClientsMap.clear();
             updateStatus("Ви - хост", "host");
             
-            // Якщо команда не валідна через зміну ліміту або її ще немає
             if (!myTeam || TEAMS.indexOf(myTeam) >= activeTeamLimit) {
                 myTeam = TEAMS[0];
             }
@@ -410,40 +422,47 @@
 
         myPeer.on('error', (err) => {
             if (err.type === 'unavailable-id') {
-                // Слот зайнятий: це може бути живий хост або "привид" мертвого.
-                // КРОК 2: Перевіряємо його на життєздатність
+                // Слот зайнятий, перевіряємо чи хост живий
                 checkIfHostAliveAndConnect(targetRoomId, slot);
             } else {
                 updateStatus("Помилка з'єднання", "error");
-                setTimeout(() => initNetwork(slot), 2000);
+                setTimeout(() => initNetwork(slot), 1000);
             }
         });
     }
 
     function checkIfHostAliveAndConnect(targetRoomId, slot) {
         if (myPeer) myPeer.destroy();
-        myPeer = new Peer(); // Створюємо тимчасового клієнта
+        myPeer = new Peer(); 
+
+        myPeer.on('disconnected', () => {
+            if (myPeer && !myPeer.destroyed && !myPeer.isReconnecting) {
+                myPeer.isReconnecting = true;
+                setTimeout(() => {
+                    if (myPeer && !myPeer.destroyed) myPeer.reconnect();
+                    myPeer.isReconnecting = false;
+                }, 500);
+            }
+        });
 
         myPeer.on('open', (id) => {
             let connectionResolved = false;
             hostConnection = myPeer.connect(targetRoomId, { reliable: true });
 
-            // Таймер перевірки на "привида". Якщо хост не відповідає за 1.5с - він мертвий.
+            // Жорсткий таймер: якщо хост не відповів за 1 секунду — йдемо далі.
             const ghostTimeout = setTimeout(() => {
                 if (!connectionResolved) {
                     connectionResolved = true;
                     if (hostConnection) hostConnection.close();
-                    // Хост мертвий, переходимо до наступного слоту!
                     initNetwork(slot + 1); 
                 }
-            }, 1500); 
+            }, 1000); 
 
             hostConnection.on('open', () => {
                 if (connectionResolved) return; 
                 connectionResolved = true;
                 clearTimeout(ghostTimeout);
                 
-                // Ми успішно підключилися до живого хоста!
                 isHost = false;
                 setupClientLogic();
             });
@@ -457,7 +476,7 @@
         });
 
         myPeer.on('error', (err) => {
-            setTimeout(() => initNetwork(slot), 2000);
+            setTimeout(() => initNetwork(slot), 1000);
         });
     }
 
@@ -468,6 +487,33 @@
         document.getElementById('host-controls').style.display = 'flex';
         updateHostControlsUI();
 
+        // СИСТЕМА ЗЛИТТЯ КІМНАТ (Room Merger)
+        // Якщо ми опинилися в додатковому слоті (через тимчасовий розрив), шукаємо можливість повернутися в нульовий.
+        if (currentSlot > 0) {
+            mergeInterval = setInterval(() => {
+                if (!isHost) return;
+                const checkPeer = new Peer();
+                checkPeer.on('open', () => {
+                    const conn = checkPeer.connect(`${GLOBAL_ROOM_ID}-s0`, { reliable: true });
+                    conn.on('open', () => {
+                        // Головний слот знову доступний! Перенаправляємо туди всіх своїх клієнтів.
+                        for (const client of activeClientsMap.values()) {
+                            if (client.conn && client.conn.open) {
+                                client.conn.send({ type: 'REDIRECT', slot: 0 });
+                            }
+                        }
+                        setTimeout(() => {
+                            checkPeer.destroy();
+                            handleHostDrop(0, true);
+                        }, 500);
+                    });
+                    conn.on('error', () => { checkPeer.destroy(); });
+                    setTimeout(() => { if (!checkPeer.destroyed) checkPeer.destroy(); }, 2000);
+                });
+                checkPeer.on('error', () => { checkPeer.destroy(); });
+            }, 4000); // Перевіряємо раз на 4 секунди
+        }
+
         myPeer.on('connection', (conn) => {
             conn.on('data', (data) => {
                 if (data.type === 'HELLO') {
@@ -476,19 +522,16 @@
 
                     let assignedTeam;
                     if (activeClientsMap.has(cid)) {
-                        // Перепідключення клієнта
                         const existing = activeClientsMap.get(cid);
                         existing.conn = conn; 
                         existing.lastActivity = Date.now();
                         assignedTeam = existing.team;
                         
-                        // Якщо команда більше не доступна через змінений ліміт
                         if (TEAMS.indexOf(assignedTeam) >= activeTeamLimit) {
                             assignedTeam = getNextBalancedTeam();
                             existing.team = assignedTeam;
                         }
                     } else {
-                        // Новий клієнт (або старий при зміні хоста)
                         if (data.teamId) {
                             assignedTeam = TEAMS.find(t => t.id === data.teamId);
                             if (!assignedTeam || TEAMS.indexOf(assignedTeam) >= activeTeamLimit) {
@@ -527,23 +570,20 @@
             });
         });
 
-        // Строгий цикл пінгування
+        // Строгий та швидкий цикл серцебиття
         hostActivityInterval = setInterval(() => {
             if (!isHost) return;
             const now = Date.now();
-            let stateChanged = false;
 
             for (const [cid, client] of activeClientsMap.entries()) {
                 if (now - client.lastActivity > TIMEOUT_LIMIT) {
                     if (client.conn && client.conn.open) client.conn.close();
                     activeClientsMap.delete(cid);
-                    stateChanged = true;
-                } else if (client.conn && client.conn.open) {
-                    client.conn.send({ type: 'PING' });
                 }
             }
             
-            if (stateChanged) broadcastCount();
+            // Завжди розсилаємо поточний стан (працює як Ping)
+            broadcastCount();
         }, PING_INTERVAL);
     }
 
@@ -573,7 +613,7 @@
                     type: 'COUNT', 
                     value: totalPlayers, 
                     teamCounts: teamCounts,
-                    activeTeamLimit: activeTeamLimit // Синхронізуємо ліміт з усіма
+                    activeTeamLimit: activeTeamLimit
                 });
             }
         }
@@ -593,7 +633,6 @@
         let minTeam = TEAMS[0];
         let minCount = teamCounts[TEAMS[0].id];
 
-        // Перевіряємо тільки в межах активного ліміту команд
         for (let i = 1; i < activeTeamLimit; i++) {
             if (teamCounts[TEAMS[i].id] < minCount) {
                 minTeam = TEAMS[i];
@@ -603,27 +642,22 @@
         return minTeam;
     }
 
-    // Зміна кількості команд (Тільки для хоста)
     function setTeamLimit(limit) {
         if (!isHost) return;
         activeTeamLimit = limit;
         updateHostControlsUI();
         
-        // Перевіряємо команду хоста
         if (TEAMS.indexOf(myTeam) >= activeTeamLimit) {
             myTeam = getNextBalancedTeam();
             updateTeamUI(myTeam);
         }
         
-        // Перевіряємо та перерозподіляємо клієнтів
-        let stateChanged = false;
         for (const [cid, client] of activeClientsMap.entries()) {
             if (TEAMS.indexOf(client.team) >= activeTeamLimit) {
                 client.team = getNextBalancedTeam();
                 if (client.conn && client.conn.open) {
                     client.conn.send({ type: 'TEAM', value: client.team });
                 }
-                stateChanged = true;
             }
         }
         
@@ -645,7 +679,6 @@
         updateStatus("Онлайн", "client");
         lastHostActivity = Date.now();
         
-        // Миттєво надсилаємо свій UID та стару команду
         hostConnection.send({ 
             type: 'HELLO', 
             clientId: MY_CLIENT_ID,
@@ -653,14 +686,9 @@
         });
         
         clearInterval(clientActivityInterval);
-        clientActivityInterval = setInterval(() => {
-            if (Date.now() - lastHostActivity > TIMEOUT_LIMIT) {
-                handleHostDrop();
-            }
-        }, PING_INTERVAL);
-
+        
         hostConnection.on('data', (data) => {
-            lastHostActivity = Date.now();
+            lastHostActivity = Date.now(); // Кожне повідомлення від хоста доводить, що він живий
 
             if (data.type === 'COUNT') {
                 updateCount(data.value);
@@ -669,26 +697,38 @@
                 }
                 if (data.activeTeamLimit && data.activeTeamLimit !== activeTeamLimit) {
                     activeTeamLimit = data.activeTeamLimit;
-                    updateHostControlsUI(); // Запам'ятовуємо на випадок, якщо станемо хостом
+                    updateHostControlsUI(); 
                 }
             } else if (data.type === 'TEAM') {
                 myTeam = data.value;
                 updateTeamUI(myTeam);
-            } else if (data.type === 'PING') {
-                hostConnection.send({ type: 'PONG', clientId: MY_CLIENT_ID });
+            } else if (data.type === 'REDIRECT') {
+                // Команда на примусове злиття кімнат
+                handleHostDrop(data.slot, true);
             }
         });
 
-        hostConnection.on('close', handleHostDrop);
-        hostConnection.on('error', handleHostDrop);
+        // Активний цикл підтримки життя
+        clientActivityInterval = setInterval(() => {
+            if (Date.now() - lastHostActivity > TIMEOUT_LIMIT) {
+                handleHostDrop(0); // Хост зник, шукаємо нового
+            } else if (hostConnection && hostConnection.open) {
+                hostConnection.send({ type: 'PONG', clientId: MY_CLIENT_ID });
+            }
+        }, PING_INTERVAL);
+
+        // Миттєва реакція на закриття P2P каналу
+        hostConnection.on('close', () => handleHostDrop(0, true));
+        hostConnection.on('error', () => handleHostDrop(0));
     }
 
-    function handleHostDrop() {
+    function handleHostDrop(targetSlot = 0, immediate = false) {
         if (isReconnecting) return;
         isReconnecting = true;
 
         clearInterval(clientActivityInterval);
         clearInterval(hostActivityInterval);
+        clearInterval(mergeInterval);
         updateStatus("Оновлення...", "loading");
         
         if (hostConnection) {
@@ -700,13 +740,12 @@
             myPeer = null;
         }
 
-        // Leader election backoff (різний час затримки, щоб не було зіткнень)
-        const randomBackoff = Math.floor(Math.random() * 1500) + 500;
+        // Швидший відкат при злитті, трохи повільніший при випадковому падінні (щоб уникнути колізій)
+        const backoff = immediate ? 100 : Math.floor(Math.random() * 800) + 200;
         setTimeout(() => {
             isReconnecting = false;
-            // Завжди починаємо пошук зі слоту 0!
-            initNetwork(0); 
-        }, randomBackoff);
+            initNetwork(targetSlot); 
+        }, backoff);
     }
 
     // ==========================================
