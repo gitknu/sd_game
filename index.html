@@ -279,11 +279,20 @@
     .team-counter-badge {
         background: rgba(127, 127, 127, 0.25);
         color: inherit;
-        border-radius: 50%;
-        width: clamp(24px, 7vw, 28px); height: clamp(24px, 7vw, 28px);
+        border-radius: 20px;
+        padding: 0 clamp(6px, 1.5vw, 10px);
+        height: clamp(24px, 7vw, 28px);
+        min-width: clamp(24px, 7vw, 28px);
         display: flex; align-items: center; justify-content: center;
         font-size: clamp(0.8rem, 3vw, 0.9rem); font-weight: 900;
         border: 1px solid rgba(127, 127, 127, 0.3);
+        white-space: nowrap;
+    }
+
+    .scanned-count {
+        opacity: 0.5;
+        font-weight: 700;
+        margin-left: 2px;
     }
 
     #host-controls {
@@ -370,7 +379,7 @@
 </head>
 <body>
 
-<div class="version-tag">v2.4</div>
+<div class="version-tag">v2.5</div>
 
 <div id="ui-layer">
     <div class="card">
@@ -420,7 +429,7 @@
             <i data-lucide="users"></i>
             <span id="team-name"></span>
             <div class="team-counter-badge">
-                <span id="team-counter">0</span>
+                <span id="team-counter">0</span><span id="scanned-counter" class="scanned-count"> - 0</span>
             </div>
         </div>
 
@@ -493,6 +502,7 @@
     
     let activeClientsMap = new Map(); 
     let globalPlayersMap = {}; // Сховище для відстеження всіх ідентифікаторів у кімнаті
+    let scannedTeammates = new Set(); // Особистий залік відсканованих тіммейтів
     
     let currentCount = 0;
     let myTeam = null;
@@ -562,8 +572,12 @@
                             const myTeamId = myTeam ? myTeam.id : null;
 
                             if (scannedTeamId && scannedTeamId === myTeamId) {
-                                // Гравець своєї команди - Блимаємо зеленим
+                                // Гравець своєї команди - Блимаємо зеленим і додаємо до заліку
                                 scannerBox.classList.add('scan-success-blink');
+                                if (txt !== MY_CLIENT_ID) {
+                                    scannedTeammates.add(txt);
+                                    updateScannedCountUI();
+                                }
                             } else {
                                 // Гравець іншої команди (або не знайдено) - Блимаємо червоним
                                 scannerBox.classList.add('scan-error-blink');
@@ -660,6 +674,7 @@
             isReconnecting = false;
             activeClientsMap.clear();
             globalPlayersMap = {};
+            scannedTeammates.clear();
             updateStatus("Ви - хост", "host");
             
             if (isAutoTeamLimit) {
@@ -668,6 +683,7 @@
 
             if (!myTeam || TEAMS.indexOf(myTeam) >= activeTeamLimit) {
                 myTeam = TEAMS[0];
+                updateScannedCountUI();
             }
             updateTeamUI(myTeam);
             
@@ -829,7 +845,7 @@
             if (!isHost) return;
             const now = Date.now();
 
-            for (const [cid, client] of activeClientsMap.entries()) {
+            for (const[cid, client] of activeClientsMap.entries()) {
                 if (now - client.lastActivity > TIMEOUT_LIMIT) {
                     if (client.conn && client.conn.open) client.conn.close();
                     activeClientsMap.delete(cid);
@@ -874,9 +890,22 @@
         }
 
         globalPlayersMap = playersMap; // Оновлюємо власну мапу (хоста)
+        
+        // Очищаємо відключених гравців зі списку відсканованих
+        if (myTeam) {
+            let validScanned = new Set();
+            for (let uid of scannedTeammates) {
+                if (globalPlayersMap[uid] === myTeam.id) {
+                    validScanned.add(uid);
+                }
+            }
+            scannedTeammates = validScanned;
+        }
+
         updateCount(currentTotal);
         if (myTeam) {
             updateTeamCountUI(teamCounts[myTeam.id]);
+            updateScannedCountUI();
         }
 
         for (const client of activeClientsMap.values()) {
@@ -915,7 +944,9 @@
     function rebalanceTeamsToLimit() {
         if (TEAMS.indexOf(myTeam) >= activeTeamLimit) {
             myTeam = getNextBalancedTeam();
+            scannedTeammates.clear();
             updateTeamUI(myTeam);
+            updateScannedCountUI();
         }
         for (const[cid, client] of activeClientsMap.entries()) {
             if (TEAMS.indexOf(client.team) >= activeTeamLimit) {
@@ -984,9 +1015,25 @@
             lastHostActivity = Date.now();
 
             if (data.type === 'COUNT') {
+                if (data.playersMap) {
+                    globalPlayersMap = data.playersMap; // Синхронізація команд усіх гравців
+                    
+                    // Очищаємо відключених гравців зі списку відсканованих
+                    if (myTeam) {
+                        let validScanned = new Set();
+                        for (let uid of scannedTeammates) {
+                            if (globalPlayersMap[uid] === myTeam.id) {
+                                validScanned.add(uid);
+                            }
+                        }
+                        scannedTeammates = validScanned;
+                    }
+                }
+                
                 updateCount(data.value);
                 if (data.teamCounts && myTeam) {
                     updateTeamCountUI(data.teamCounts[myTeam.id]);
+                    updateScannedCountUI();
                 }
                 if (data.isAutoTeamLimit !== undefined) {
                     isAutoTeamLimit = data.isAutoTeamLimit;
@@ -995,10 +1042,11 @@
                     activeTeamLimit = data.activeTeamLimit;
                     updateHostControlsUI(); 
                 }
-                if (data.playersMap) {
-                    globalPlayersMap = data.playersMap; // Синхронізація команд усіх гравців
-                }
             } else if (data.type === 'TEAM') {
+                if (!myTeam || myTeam.id !== data.value.id) {
+                    scannedTeammates.clear();
+                    updateScannedCountUI();
+                }
                 myTeam = data.value;
                 updateTeamUI(myTeam);
             } else if (data.type === 'REDIRECT') {
@@ -1065,6 +1113,13 @@
         const teamCounterEl = document.getElementById('team-counter');
         if (teamCounterEl) {
             teamCounterEl.innerText = count > 0 ? count : 1;
+        }
+    }
+
+    function updateScannedCountUI() {
+        const scannedCounterEl = document.getElementById('scanned-counter');
+        if (scannedCounterEl) {
+            scannedCounterEl.innerText = ` - ${scannedTeammates.size}`;
         }
     }
 
