@@ -276,6 +276,13 @@
         width: clamp(16px, 4vw, 20px); height: clamp(16px, 4vw, 20px);
     }
 
+    /* Розділені лічильники команди та сканувань */
+    .team-badges {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
     .team-counter-badge {
         background: rgba(127, 127, 127, 0.25);
         color: inherit;
@@ -289,10 +296,10 @@
         white-space: nowrap;
     }
 
-    .scanned-count {
-        opacity: 0.5;
-        font-weight: 700;
-        margin-left: 2px;
+    .scanned-badge {
+        opacity: 0.65;
+        background: rgba(0, 0, 0, 0.1);
+        border-style: dashed;
     }
 
     #host-controls {
@@ -379,7 +386,7 @@
 </head>
 <body>
 
-<div class="version-tag">v2.5</div>
+<div class="version-tag">v2.6</div>
 
 <div id="ui-layer">
     <div class="card">
@@ -424,12 +431,13 @@
             <span class="subtitle">Скануйте, щоб приєднатись</span>
         </div>
 
-        <!-- Блок команди -->
+        <!-- Блок команди та розділені лічильники -->
         <div id="team-container">
             <i data-lucide="users"></i>
             <span id="team-name"></span>
-            <div class="team-counter-badge">
-                <span id="team-counter">0</span><span id="scanned-counter" class="scanned-count"> - 0</span>
+            <div class="team-badges">
+                <div class="team-counter-badge" id="team-counter">0</div>
+                <div class="team-counter-badge scanned-badge" id="scanned-counter" style="display: none;">0 / 0</div>
             </div>
         </div>
 
@@ -506,6 +514,7 @@
     
     let currentCount = 0;
     let myTeam = null;
+    let myTeamSize = 1; // Розмір власної команди
     let activeTeamLimit = 2; 
     let isAutoTeamLimit = true; 
 
@@ -576,7 +585,7 @@
                                 scannerBox.classList.add('scan-success-blink');
                                 if (txt !== MY_CLIENT_ID) {
                                     scannedTeammates.add(txt);
-                                    updateScannedCountUI();
+                                    updateTeamCountUI(myTeamSize); // Миттєво оновлюємо сірий лічильник
                                 }
                             } else {
                                 // Гравець іншої команди (або не знайдено) - Блимаємо червоним
@@ -618,15 +627,20 @@
     // ==========================================
     function getBestTeamLimit(n) {
         if (n < 4) return 2; 
-        let bestK = 2;
-        let minRem = Infinity;
         
+        let bestK = 2;
+        let minScore = Infinity;
+        
+        // Гарантуємо, що ніхто не лишиться наодинці (baseSize >= 2)
         for (let k = 4; k >= 2; k--) {
-            if (n / k < 2) continue; 
+            const baseSize = Math.floor(n / k);
+            if (baseSize < 2) continue; 
+            
             let rem = n % k;
             if (rem === 0) return k; 
-            if (rem < minRem) {
-                minRem = rem;
+            
+            if (rem < minScore) {
+                minScore = rem;
                 bestK = k; 
             }
         }
@@ -683,10 +697,9 @@
 
             if (!myTeam || TEAMS.indexOf(myTeam) >= activeTeamLimit) {
                 myTeam = TEAMS[0];
-                updateScannedCountUI();
             }
-            updateTeamUI(myTeam);
             
+            updateTeamUI(myTeam);
             setupHostLogic();
             broadcastCount(); 
         });
@@ -904,8 +917,8 @@
 
         updateCount(currentTotal);
         if (myTeam) {
-            updateTeamCountUI(teamCounts[myTeam.id]);
-            updateScannedCountUI();
+            myTeamSize = teamCounts[myTeam.id];
+            updateTeamCountUI(myTeamSize);
         }
 
         for (const client of activeClientsMap.values()) {
@@ -946,7 +959,6 @@
             myTeam = getNextBalancedTeam();
             scannedTeammates.clear();
             updateTeamUI(myTeam);
-            updateScannedCountUI();
         }
         for (const[cid, client] of activeClientsMap.entries()) {
             if (TEAMS.indexOf(client.team) >= activeTeamLimit) {
@@ -1032,8 +1044,8 @@
                 
                 updateCount(data.value);
                 if (data.teamCounts && myTeam) {
-                    updateTeamCountUI(data.teamCounts[myTeam.id]);
-                    updateScannedCountUI();
+                    myTeamSize = data.teamCounts[myTeam.id];
+                    updateTeamCountUI(myTeamSize);
                 }
                 if (data.isAutoTeamLimit !== undefined) {
                     isAutoTeamLimit = data.isAutoTeamLimit;
@@ -1045,7 +1057,6 @@
             } else if (data.type === 'TEAM') {
                 if (!myTeam || myTeam.id !== data.value.id) {
                     scannedTeammates.clear();
-                    updateScannedCountUI();
                 }
                 myTeam = data.value;
                 updateTeamUI(myTeam);
@@ -1109,17 +1120,22 @@
         }
     }
 
+    // Одночасне оновлення лічильника команди та відсканованих гравців
     function updateTeamCountUI(count) {
         const teamCounterEl = document.getElementById('team-counter');
         if (teamCounterEl) {
             teamCounterEl.innerText = count > 0 ? count : 1;
         }
-    }
 
-    function updateScannedCountUI() {
         const scannedCounterEl = document.getElementById('scanned-counter');
         if (scannedCounterEl) {
-            scannedCounterEl.innerText = ` - ${scannedTeammates.size}`;
+            if (count >= 2) {
+                scannedCounterEl.style.display = 'flex';
+                // Виводимо у форматі "відскановані / кількість_решти_гравців_у_команді"
+                scannedCounterEl.innerText = `${scannedTeammates.size} / ${count - 1}`;
+            } else {
+                scannedCounterEl.style.display = 'none';
+            }
         }
     }
 
