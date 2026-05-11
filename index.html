@@ -225,6 +225,31 @@
 
     .host-controls-title {
         font-size: clamp(0.7rem, 2.5vw, 0.8rem); font-weight: 700; color: #666; text-transform: uppercase;
+        display: flex; align-items: center; justify-content: center;
+    }
+
+    /* Стилі для режиму АВТО */
+    #auto-badge {
+        display: inline-block;
+        margin-left: 6px;
+        padding: 2px 6px;
+        font-size: clamp(0.55rem, 2vw, 0.65rem);
+        font-weight: 800;
+        background: #e3f2fd;
+        color: var(--color-accent);
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    #auto-badge.inactive {
+        background: #f1f3f5;
+        color: #adb5bd;
+    }
+    
+    #auto-badge.inactive:hover {
+        background: #e9ecef;
+        color: #6c757d;
     }
 
     .host-controls-btns {
@@ -240,6 +265,16 @@
 
     .btn-team-limit.active {
         background: var(--color-accent); color: white;
+    }
+
+    @keyframes auto-glow {
+        0% { box-shadow: 0 0 2px rgba(11, 83, 148, 0.2); }
+        50% { box-shadow: 0 0 12px rgba(11, 83, 148, 0.6); }
+        100% { box-shadow: 0 0 2px rgba(11, 83, 148, 0.2); }
+    }
+
+    .btn-team-limit.auto-highlight {
+        animation: auto-glow 2s infinite;
     }
 
     .btn-team-limit:active { transform: scale(0.95); }
@@ -263,7 +298,7 @@
 </head>
 <body>
 
-<div class="version-tag">v1.9</div>
+<div class="version-tag">v2.0</div>
 
 <div id="ui-layer">
     <div class="card">
@@ -303,11 +338,14 @@
 
         <!-- Панель керування хоста -->
         <div id="host-controls">
-            <span class="host-controls-title">Кількість команд</span>
+            <div class="host-controls-title">
+                Кількість команд 
+                <span id="auto-badge" onclick="setAutoMode()">АВТО</span>
+            </div>
             <div class="host-controls-btns">
-                <button class="btn-team-limit" id="btn-limit-2" onclick="setTeamLimit(2)">2</button>
-                <button class="btn-team-limit" id="btn-limit-3" onclick="setTeamLimit(3)">3</button>
-                <button class="btn-team-limit active" id="btn-limit-4" onclick="setTeamLimit(4)">4</button>
+                <button class="btn-team-limit" id="btn-limit-2" onclick="setTeamLimit(2, false)">2</button>
+                <button class="btn-team-limit" id="btn-limit-3" onclick="setTeamLimit(3, false)">3</button>
+                <button class="btn-team-limit active" id="btn-limit-4" onclick="setTeamLimit(4, false)">4</button>
             </div>
         </div>
 
@@ -371,11 +409,12 @@
     // Глобальні змінні гри
     let currentCount = 0;
     let myTeam = null;
-    let activeTeamLimit = 4; // За замовчуванням 4 команди
+    let activeTeamLimit = 2; // Буде переписано автобалансиром
+    let isAutoTeamLimit = true; // За замовчуванням увімкнено розумний розподіл
 
     let hostActivityInterval = null;
     let clientActivityInterval = null;
-    let mergeInterval = null; // Інтервал злиття розбитих кімнат
+    let mergeInterval = null; 
     let lastHostActivity = Date.now();
     let isReconnecting = false;
 
@@ -400,6 +439,29 @@
             colorLight : "#ffffff",
             correctLevel : QRCode.CorrectLevel.L
         });
+    }
+
+    // ==========================================
+    // ЛОГІКА АВТОМАТИЧНОГО РОЗПОДІЛУ
+    // ==========================================
+    function getBestTeamLimit(n) {
+        if (n < 4) return 2; // Якщо мало людей - 2 команди
+        let bestK = 2;
+        let minRem = Infinity;
+        
+        // Перевіряємо розподіл для 4, 3 та 2 команд
+        for (let k = 4; k >= 2; k--) {
+            if (n / k < 2) continue; // Намагаємось зберегти мінімум 2 людини в команді
+            let rem = n % k;
+            
+            if (rem === 0) return k; // Знайдено ідеальний розподіл! (без залишку)
+            
+            if (rem < minRem) {
+                minRem = rem;
+                bestK = k; // Зберігаємо як "найкращий компроміс" (для спірних чисел)
+            }
+        }
+        return bestK;
     }
 
     // ==========================================
@@ -429,7 +491,7 @@
         // КРОК 1: Намагаємось стати ХОСТОМ у поточному слоті
         myPeer = new Peer(targetRoomId);
 
-        // БЕЗШОВНЕ ВІДНОВЛЕННЯ: Якщо падає сервер PeerJS, не руйнуємо P2P-зв'язок!
+        // БЕЗШОВНЕ ВІДНОВЛЕННЯ
         myPeer.on('disconnected', () => {
             if (myPeer && !myPeer.destroyed && !myPeer.isReconnecting) {
                 myPeer.isReconnecting = true;
@@ -446,6 +508,10 @@
             activeClientsMap.clear();
             updateStatus("Ви - хост", "host");
             
+            if (isAutoTeamLimit) {
+                activeTeamLimit = getBestTeamLimit(1); 
+            }
+
             if (!myTeam || TEAMS.indexOf(myTeam) >= activeTeamLimit) {
                 myTeam = TEAMS[0];
             }
@@ -457,7 +523,6 @@
 
         myPeer.on('error', (err) => {
             if (err.type === 'unavailable-id') {
-                // Слот зайнятий, перевіряємо чи хост живий
                 checkIfHostAliveAndConnect(targetRoomId, slot);
             } else {
                 updateStatus("Помилка з'єднання", "error");
@@ -484,7 +549,6 @@
             let connectionResolved = false;
             hostConnection = myPeer.connect(targetRoomId, { reliable: true });
 
-            // Жорсткий таймер: якщо хост не відповів за 1 секунду — йдемо далі.
             const ghostTimeout = setTimeout(() => {
                 if (!connectionResolved) {
                     connectionResolved = true;
@@ -523,7 +587,6 @@
         updateHostControlsUI();
 
         // СИСТЕМА ЗЛИТТЯ КІМНАТ (Room Merger)
-        // Якщо ми опинилися в додатковому слоті (через тимчасовий розрив), шукаємо можливість повернутися в нульовий.
         if (currentSlot > 0) {
             mergeInterval = setInterval(() => {
                 if (!isHost) return;
@@ -531,7 +594,6 @@
                 checkPeer.on('open', () => {
                     const conn = checkPeer.connect(`${GLOBAL_ROOM_ID}-s0`, { reliable: true });
                     conn.on('open', () => {
-                        // Головний слот знову доступний! Перенаправляємо туди всіх своїх клієнтів.
                         for (const client of activeClientsMap.values()) {
                             if (client.conn && client.conn.open) {
                                 client.conn.send({ type: 'REDIRECT', slot: 0 });
@@ -546,7 +608,7 @@
                     setTimeout(() => { if (!checkPeer.destroyed) checkPeer.destroy(); }, 2000);
                 });
                 checkPeer.on('error', () => { checkPeer.destroy(); });
-            }, 4000); // Перевіряємо раз на 4 секунди
+            }, 4000);
         }
 
         myPeer.on('connection', (conn) => {
@@ -555,18 +617,31 @@
                     const cid = data.clientId;
                     if (!cid) return; 
 
-                    let assignedTeam;
-                    if (activeClientsMap.has(cid)) {
+                    // Оновлюємо дані клієнта перед авто-розподілом
+                    if (!activeClientsMap.has(cid)) {
+                        activeClientsMap.set(cid, { conn: conn, team: null, lastActivity: Date.now() });
+                    } else {
                         const existing = activeClientsMap.get(cid);
                         existing.conn = conn; 
                         existing.lastActivity = Date.now();
-                        assignedTeam = existing.team;
-                        
-                        if (TEAMS.indexOf(assignedTeam) >= activeTeamLimit) {
-                            assignedTeam = getNextBalancedTeam();
-                            existing.team = assignedTeam;
+                    }
+
+                    // Перевіряємо чи потрібно розширити або звузити ліміт команд
+                    if (isAutoTeamLimit) {
+                        const totalPlayers = 1 + activeClientsMap.size;
+                        const bestLimit = getBestTeamLimit(totalPlayers);
+                        if (bestLimit !== activeTeamLimit) {
+                            activeTeamLimit = bestLimit;
+                            updateHostControlsUI();
+                            rebalanceTeamsToLimit();
                         }
-                    } else {
+                    }
+                    
+                    const client = activeClientsMap.get(cid);
+                    let assignedTeam = client.team;
+
+                    // Якщо в гравця команди немає або вона поза новим лімітом
+                    if (!assignedTeam || TEAMS.indexOf(assignedTeam) >= activeTeamLimit) {
                         if (data.teamId) {
                             assignedTeam = TEAMS.find(t => t.id === data.teamId);
                             if (!assignedTeam || TEAMS.indexOf(assignedTeam) >= activeTeamLimit) {
@@ -575,12 +650,7 @@
                         } else {
                             assignedTeam = getNextBalancedTeam();
                         }
-                        
-                        activeClientsMap.set(cid, {
-                            conn: conn,
-                            team: assignedTeam,
-                            lastActivity: Date.now()
-                        });
+                        client.team = assignedTeam;
                     }
                     
                     conn.send({ type: 'TEAM', value: assignedTeam });
@@ -605,7 +675,6 @@
             });
         });
 
-        // Строгий та швидкий цикл серцебиття
         hostActivityInterval = setInterval(() => {
             if (!isHost) return;
             const now = Date.now();
@@ -617,7 +686,6 @@
                 }
             }
             
-            // Завжди розсилаємо поточний стан (працює як Ping)
             broadcastCount();
         }, PING_INTERVAL);
     }
@@ -625,19 +693,32 @@
     function broadcastCount() {
         if (!isHost) return;
 
-        let totalPlayers = 1; 
+        let totalPlayers = 1 + activeClientsMap.size;
+        
+        // Автоматичне перемикання при зміні кількості
+        if (isAutoTeamLimit) {
+            const bestLimit = getBestTeamLimit(totalPlayers);
+            if (bestLimit !== activeTeamLimit) {
+                activeTeamLimit = bestLimit;
+                updateHostControlsUI();
+                rebalanceTeamsToLimit();
+            }
+        }
+
+        // Обчислення точної статистики після можливого ребалансу
+        let currentTotal = 1; 
         const teamCounts = { 'red': 0, 'white': 0, 'black': 0, 'blue': 0 };
         
         if (myTeam) teamCounts[myTeam.id]++;
         
         for (const client of activeClientsMap.values()) {
-            totalPlayers++;
+            currentTotal++;
             if (client.team) {
                 teamCounts[client.team.id]++;
             }
         }
 
-        updateCount(totalPlayers);
+        updateCount(currentTotal);
         if (myTeam) {
             updateTeamCountUI(teamCounts[myTeam.id]);
         }
@@ -646,9 +727,10 @@
             if (client.conn && client.conn.open) {
                 client.conn.send({ 
                     type: 'COUNT', 
-                    value: totalPlayers, 
+                    value: currentTotal, 
                     teamCounts: teamCounts,
-                    activeTeamLimit: activeTeamLimit
+                    activeTeamLimit: activeTeamLimit,
+                    isAutoTeamLimit: isAutoTeamLimit
                 });
             }
         }
@@ -677,17 +759,13 @@
         return minTeam;
     }
 
-    function setTeamLimit(limit) {
-        if (!isHost) return;
-        activeTeamLimit = limit;
-        updateHostControlsUI();
-        
+    function rebalanceTeamsToLimit() {
         if (TEAMS.indexOf(myTeam) >= activeTeamLimit) {
             myTeam = getNextBalancedTeam();
             updateTeamUI(myTeam);
         }
         
-        for (const [cid, client] of activeClientsMap.entries()) {
+        for (const[cid, client] of activeClientsMap.entries()) {
             if (TEAMS.indexOf(client.team) >= activeTeamLimit) {
                 client.team = getNextBalancedTeam();
                 if (client.conn && client.conn.open) {
@@ -695,14 +773,44 @@
                 }
             }
         }
-        
+    }
+
+    // Ручне або автоматичне встановлення ліміту
+    function setTeamLimit(limit, isAuto = false) {
+        if (!isHost) return;
+        activeTeamLimit = limit;
+        isAutoTeamLimit = isAuto; 
+        updateHostControlsUI();
+        rebalanceTeamsToLimit();
         broadcastCount();
+    }
+    
+    // Повернення в АВТО режим після ручного оверрайду
+    function setAutoMode() {
+        if (!isHost) return;
+        isAutoTeamLimit = true;
+        const totalPlayers = 1 + activeClientsMap.size;
+        const bestLimit = getBestTeamLimit(totalPlayers);
+        setTeamLimit(bestLimit, true);
     }
 
     function updateHostControlsUI() {
-        document.getElementById('btn-limit-2').classList.toggle('active', activeTeamLimit === 2);
-        document.getElementById('btn-limit-3').classList.toggle('active', activeTeamLimit === 3);
-        document.getElementById('btn-limit-4').classList.toggle('active', activeTeamLimit === 4);
+        document.getElementById('btn-limit-2').className = 'btn-team-limit';
+        document.getElementById('btn-limit-3').className = 'btn-team-limit';
+        document.getElementById('btn-limit-4').className = 'btn-team-limit';
+
+        const activeBtn = document.getElementById(`btn-limit-${activeTeamLimit}`);
+        const autoBadge = document.getElementById('auto-badge');
+
+        if (activeBtn) {
+            activeBtn.classList.add('active');
+            if (isAutoTeamLimit) {
+                activeBtn.classList.add('auto-highlight');
+                if (autoBadge) autoBadge.classList.remove('inactive');
+            } else {
+                if (autoBadge) autoBadge.classList.add('inactive');
+            }
+        }
     }
 
     // ==========================================
@@ -723,14 +831,19 @@
         clearInterval(clientActivityInterval);
         
         hostConnection.on('data', (data) => {
-            lastHostActivity = Date.now(); // Кожне повідомлення від хоста доводить, що він живий
+            lastHostActivity = Date.now();
 
             if (data.type === 'COUNT') {
                 updateCount(data.value);
                 if (data.teamCounts && myTeam) {
                     updateTeamCountUI(data.teamCounts[myTeam.id]);
                 }
-                if (data.activeTeamLimit && data.activeTeamLimit !== activeTeamLimit) {
+                
+                // Синхронізуємо стан хоста (щоб зберегти ручний вибір у разі зміни хоста)
+                if (data.isAutoTeamLimit !== undefined) {
+                    isAutoTeamLimit = data.isAutoTeamLimit;
+                }
+                if (data.activeTeamLimit !== undefined && data.activeTeamLimit !== activeTeamLimit) {
                     activeTeamLimit = data.activeTeamLimit;
                     updateHostControlsUI(); 
                 }
@@ -738,21 +851,18 @@
                 myTeam = data.value;
                 updateTeamUI(myTeam);
             } else if (data.type === 'REDIRECT') {
-                // Команда на примусове злиття кімнат
                 handleHostDrop(data.slot, true);
             }
         });
 
-        // Активний цикл підтримки життя
         clientActivityInterval = setInterval(() => {
             if (Date.now() - lastHostActivity > TIMEOUT_LIMIT) {
-                handleHostDrop(0); // Хост зник, шукаємо нового
+                handleHostDrop(0); 
             } else if (hostConnection && hostConnection.open) {
                 hostConnection.send({ type: 'PONG', clientId: MY_CLIENT_ID });
             }
         }, PING_INTERVAL);
 
-        // Миттєва реакція на закриття P2P каналу
         hostConnection.on('close', () => handleHostDrop(0, true));
         hostConnection.on('error', () => handleHostDrop(0));
     }
@@ -775,7 +885,6 @@
             myPeer = null;
         }
 
-        // Швидший відкат при злитті, трохи повільніший при випадковому падінні (щоб уникнути колізій)
         const backoff = immediate ? 100 : Math.floor(Math.random() * 800) + 200;
         setTimeout(() => {
             isReconnecting = false;
