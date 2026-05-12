@@ -7,12 +7,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <script src="https://unpkg.com/lucide@latest"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
-
 <style>
     :root {
         --color-bg: #111111;
@@ -24,16 +22,13 @@
         --color-text: #222222;
         --shadow-large: 0 10px 40px rgba(0,0,0,0.6);
     }
-
     * { box-sizing: border-box; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
-
     body {
         margin: 0; padding: 0;
         background-color: var(--color-bg);
         background-image: radial-gradient(circle at center, #2a2a2a 0%, #111111 100%);
         font-family: 'Montserrat', sans-serif;
         color: var(--color-text);
-        
         /* Захист від обрізання: дозволяє контенту скролитись, якщо екран надто малий */
         min-height: 100dvh;
         width: 100%;
@@ -41,7 +36,6 @@
         overflow-x: hidden;
         overflow-y: auto;
     }
-
     /* Мінімалістичний індикатор версії в лівому верхньому кутку */
     .version-tag {
         position: fixed;
@@ -54,14 +48,12 @@
         letter-spacing: 0.5px;
         pointer-events: none;
     }
-
     #ui-layer {
         display: flex; flex-direction: column; align-items: center; justify-content: center;
         width: 100%; min-height: 100dvh; 
         padding: clamp(10px, 3vh, 20px);
         position: relative;
     }
-    
     .card {
         background: var(--color-card); 
         /* Стискаємо відступи по вертикалі на малих екранах */
@@ -77,7 +69,6 @@
         position: relative;
         z-index: 10;
     }
-
     /* Шапка картки для заголовка та лічильника */
     .card-header {
         display: flex;
@@ -87,7 +78,6 @@
         padding-bottom: 2px;
         gap: 5px;
     }
-
     .header-left {
         display: flex;
         flex-direction: column;
@@ -95,7 +85,6 @@
         gap: clamp(4px, 1vh, 6px);
         flex: 1 1 auto;
     }
-
     /* Центральний блок для камери-сканера */
     .header-center {
         display: flex;
@@ -104,7 +93,6 @@
         flex: 0 0 auto;
         margin: 0 clamp(4px, 1vw, 10px);
     }
-
     #scanner-box {
         width: clamp(48px, 14vw, 64px); 
         height: clamp(38px, 11vw, 48px); 
@@ -118,41 +106,26 @@
         align-items: center;
         justify-content: center;
     }
-
     #qr-video {
         width: 100%;
         height: 100%;
         object-fit: cover;
     }
-
     /* Анімації результатів сканування */
     .scan-success-blink {
         animation: scan-glow-green 0.6s ease-out;
     }
-
     .scan-error-blink {
         animation: scan-glow-red 0.6s ease-out;
     }
-    
-    .scan-wait-blink {
-        animation: scan-glow-yellow 0.6s ease-out;
-    }
-
     @keyframes scan-glow-green {
         0% { border-color: #4caf50; box-shadow: 0 0 15px #4caf50, inset 0 0 10px #4caf50; }
         100% { border-color: #e9ecef; box-shadow: inset 0 0 5px rgba(0,0,0,0.5); }
     }
-
     @keyframes scan-glow-red {
         0% { border-color: #e53935; box-shadow: 0 0 15px #e53935, inset 0 0 10px #e53935; }
         100% { border-color: #e9ecef; box-shadow: inset 0 0 5px rgba(0,0,0,0.5); }
     }
-
-    @keyframes scan-glow-yellow {
-        0% { border-color: #ffca28; box-shadow: 0 0 15px #ffca28, inset 0 0 10px #ffca28; }
-        100% { border-color: #e9ecef; box-shadow: inset 0 0 5px rgba(0,0,0,0.5); }
-    }
-
     .header-right {
         display: flex;
         align-items: center;
@@ -163,12 +136,10 @@
         border: 1px solid #e9ecef;
         flex-shrink: 0;
     }
-
     h1 {
         margin: 0; font-size: clamp(1.05rem, 4.5vw, 1.25rem); font-weight: 800; text-transform: uppercase;
         color: var(--color-text); letter-spacing: 0.5px; text-align: left; line-height: 1.1;
     }
-
     .counter-container {
         position: relative;
         width: clamp(34px, 9vw, 40px); height: clamp(34px, 9vw, 40px);
@@ -179,27 +150,22 @@
         box-shadow: inset 0 0 5px rgba(0,0,0,0.1), 0 0 0 4px rgba(11, 83, 148, 0.1);
         transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
-
     .counter-container.pulse {
         transform: scale(1.15);
         box-shadow: inset 0 0 5px rgba(0,0,0,0.1), 0 0 0 6px rgba(11, 83, 148, 0.2);
     }
-
     #counter {
         font-size: clamp(1.05rem, 4vw, 1.2rem); font-weight: 900; color: var(--color-accent);
         line-height: 1; margin-top: 2px;
     }
-
     .counter-label {
         font-size: clamp(0.55rem, 2.5vw, 0.65rem); font-weight: 800; color: #555; 
         text-transform: uppercase; line-height: 1.1; text-align: left;
     }
-
     .subtitle {
         font-size: clamp(0.7rem, 2.5vh, 0.8rem); font-weight: 700; color: #666; text-transform: uppercase;
         margin-top: -2px;
     }
-
     /* Стилі для подвійного QR-коду */
     #qrcode-box {
         background: #f8f9fa;
@@ -212,14 +178,12 @@
         gap: clamp(6px, 1.5vh, 10px);
         width: 100%;
     }
-
     .qr-row {
         display: flex;
         gap: clamp(8px, 2vw, 12px);
         width: 100%;
         justify-content: center;
     }
-
     .qr-item {
         background: white;
         padding: clamp(6px, 1.5vh, 10px);
@@ -232,7 +196,6 @@
         flex: 1; 
         width: 50%;
     }
-
     .qr-item-title {
         font-size: clamp(0.55rem, 2.2vw, 0.65rem);
         font-weight: 800;
@@ -240,13 +203,11 @@
         text-transform: uppercase;
         letter-spacing: 0.5px;
     }
-
     .qr-render {
         width: 100%;
         display: flex;
         justify-content: center;
     }
-    
     .qr-render img, .qr-render canvas {
         display: block;
         margin: 0 auto;
@@ -254,7 +215,6 @@
         max-width: clamp(80px, 18vh, 130px);
         height: auto !important;
     }
-
     #status-badge {
         display: inline-flex; align-items: center; gap: 4px;
         padding: 4px 8px; border-radius: 20px;
@@ -263,13 +223,10 @@
         transition: all 0.3s ease;
         white-space: nowrap;
     }
-
     #status-badge i { width: 12px; height: 12px; }
-    
     .status-host { background: #e3f2fd !important; color: var(--color-accent) !important; }
     .status-client { background: #e8f5e9 !important; color: var(--color-success) !important; }
     .status-error { background: #ffebee !important; color: var(--color-danger) !important; }
-
     #team-container {
         display: none; 
         align-items: center; justify-content: center; gap: 8px;
@@ -280,18 +237,15 @@
         font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; 
         transition: all 0.3s ease;
     }
-
     #team-container i, .btn-primary i {
         width: clamp(16px, 4vw, 20px); height: clamp(16px, 4vw, 20px);
     }
-
     /* Розділені лічильники команди та сканувань */
     .team-badges {
         display: flex;
         align-items: center;
         gap: 6px;
     }
-
     .team-counter-badge {
         background: rgba(127, 127, 127, 0.25);
         color: inherit;
@@ -304,13 +258,11 @@
         border: 1px solid rgba(127, 127, 127, 0.3);
         white-space: nowrap;
     }
-
     .scanned-badge {
         opacity: 0.65;
         background: rgba(0, 0, 0, 0.1);
         border-style: dashed;
     }
-
     #host-controls {
         display: none; 
         flex-direction: column; align-items: center; gap: clamp(6px, 1.5vh, 10px);
@@ -319,12 +271,10 @@
         background: #f8f9fa; border-radius: 1rem;
         border: 1px solid #e9ecef;
     }
-
     .host-controls-title {
         font-size: clamp(0.7rem, 2.5vw, 0.8rem); font-weight: 700; color: #666; text-transform: uppercase;
         display: flex; align-items: center; justify-content: center;
     }
-
     /* Стилі для режиму АВТО */
     #auto-badge {
         display: inline-block;
@@ -338,44 +288,35 @@
         cursor: pointer;
         transition: all 0.2s;
     }
-    
     #auto-badge.inactive {
         background: #f1f3f5;
         color: #adb5bd;
     }
-    
     #auto-badge.inactive:hover {
         background: #e9ecef;
         color: #6c757d;
     }
-
     .host-controls-btns {
         display: flex; gap: 8px; width: 100%;
     }
-
     .btn-team-limit {
         flex: 1; padding: clamp(6px, 1.5vh, 10px) 0; border: 2px solid var(--color-accent);
         border-radius: 0.8rem; background: transparent; color: var(--color-accent);
         font-size: clamp(0.9rem, 3.5vw, 1rem); font-family: 'Montserrat', sans-serif; font-weight: 800; 
         cursor: pointer; transition: all 0.2s;
     }
-
     .btn-team-limit.active {
         background: var(--color-accent); color: white;
     }
-
     @keyframes auto-glow {
         0% { box-shadow: 0 0 2px rgba(11, 83, 148, 0.2); }
         50% { box-shadow: 0 0 12px rgba(11, 83, 148, 0.6); }
         100% { box-shadow: 0 0 2px rgba(11, 83, 148, 0.2); }
     }
-
     .btn-team-limit.auto-highlight {
         animation: auto-glow 2s infinite;
     }
-
     .btn-team-limit:active { transform: scale(0.95); }
-
     .btn-primary {
         background: var(--color-accent); 
         color: white; border: none; 
@@ -387,19 +328,14 @@
         letter-spacing: 0.5px;
         transition: transform 0.1s, background 0.2s;
     }
-    
     .btn-primary:active { transform: scale(0.97); }
     .btn-primary:hover { background: var(--color-accent-hover); }
-
 </style>
 </head>
 <body>
-
-<div class="version-tag">v2.7</div>
-
+<div class="version-tag">v2.6</div>
 <div id="ui-layer">
     <div class="card">
-        
         <!-- Шапка: Заголовок, СКАНЕР та Лічильник -->
         <div class="card-header">
             <div class="header-left">
@@ -409,14 +345,12 @@
                     <span id="status-text">Підключення...</span>
                 </div>
             </div>
-            
             <div class="header-center">
                 <div id="scanner-box">
                     <video id="qr-video" muted playsinline autoplay></video>
                     <canvas id="qr-canvas" hidden></canvas>
                 </div>
             </div>
-
             <div class="header-right">
                 <div class="counter-container" id="counter-box">
                     <span id="counter">0</span>
@@ -424,7 +358,6 @@
                 <div class="counter-label">Осіб<br>у грі</div>
             </div>
         </div>
-
         <!-- Центральний блок: 2 QR-коди -->
         <div id="qrcode-box">
             <div class="qr-row">
@@ -439,17 +372,15 @@
             </div>
             <span class="subtitle">Скануйте, щоб приєднатись</span>
         </div>
-
         <!-- Блок команди та розділені лічильники -->
         <div id="team-container">
             <i data-lucide="users"></i>
             <span id="team-name"></span>
-            <div class="team-badges" id="team-badges" style="display: none;">
+            <div class="team-badges">
                 <div class="team-counter-badge" id="team-counter">0</div>
-                <div class="team-counter-badge scanned-badge" id="scanned-counter">0</div>
+                <div class="team-counter-badge scanned-badge" id="scanned-counter" style="display: none;">0 / 0</div>
             </div>
         </div>
-
         <!-- Панель керування хоста -->
         <div id="host-controls">
             <div class="host-controls-title">
@@ -462,22 +393,18 @@
                 <button class="btn-team-limit active" id="btn-limit-4" onclick="setTeamLimit(4, false)">4</button>
             </div>
         </div>
-
         <!-- Кнопка поширення -->
         <button class="btn-primary" onclick="shareLink()">
             <i data-lucide="share-2"></i> ЗАПРОСИТИ
         </button>
     </div>
 </div>
-
 <script>
     lucide.createIcons();
-
     // Системні налаштування
     const PING_INTERVAL = 400;  
     const TIMEOUT_LIMIT = 1500; 
     const MAX_SLOTS = 20;       
-    
     // Налаштування команд
     const TEAMS =[
         { id: 'red', name: 'Червоні', bg: '#b80000', color: '#ffffff' },
@@ -485,7 +412,6 @@
         { id: 'black', name: 'Чорні', bg: '#000000', color: '#ffffff' },
         { id: 'blue', name: 'Сині', bg: '#0b5394', color: '#ffffff' }
     ];
-
     // ==========================================
     // СИСТЕМА УНІКАЛЬНОЇ ІДЕНТИФІКАЦІЇ
     // ==========================================
@@ -496,53 +422,44 @@
             const ua = navigator.userAgent || '';
             const rand = Math.random().toString(36).substring(2);
             const time = Date.now().toString();
-            
             const raw = vendor + ua + rand + time;
             let hash = 0;
             for (let i = 0; i < raw.length; i++) {
                 hash = ((hash << 5) - hash) + raw.charCodeAt(i);
                 hash |= 0;
             }
-            
             uid = 'uid_' + Math.abs(hash).toString(16) + '_' + rand;
             localStorage.setItem('app_device_uid', uid);
         }
         return uid;
     }
     const MY_CLIENT_ID = getDeviceUID();
-
     // Глобальні змінні мережі
     let myPeer = null;
     let hostConnection = null;
     let isHost = false;
     let currentSlot = 0;
-    
     let activeClientsMap = new Map(); 
     let globalPlayersMap = {}; // Сховище для відстеження всіх ідентифікаторів у кімнаті
     let scannedTeammates = new Set(); // Особистий залік відсканованих тіммейтів
-    
     let currentCount = 0;
     let myTeam = null;
     let myTeamSize = 1; // Розмір власної команди
     let activeTeamLimit = 2; 
     let isAutoTeamLimit = true; 
-
     let hostActivityInterval = null;
     let clientActivityInterval = null;
     let mergeInterval = null; 
     let lastHostActivity = Date.now();
     let isReconnecting = false;
-
     const urlParams = new URLSearchParams(window.location.search);
     let roomString = urlParams.get('room') || window.location.hostname.replace(/[^a-zA-Z0-9]/g, '') || 'local';
     const GLOBAL_ROOM_ID = `webrtc-auto-room-${roomString}`;
-
     window.onload = () => {
         initScanner();
         initNetwork(0);
         generateQR();
     };
-
     // ==========================================
     // ЛОГІКА СКАНЕРА QR-КОДІВ (jsQR)
     // ==========================================
@@ -553,7 +470,6 @@
         let lastScannedId = null;
         let scanResetTimeout = null;
         let lastTickTime = 0;
-
         navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
             .then(function(stream) {
                 video.srcObject = stream;
@@ -562,7 +478,6 @@
             .catch(function(err) {
                 console.warn("Основна камера недоступна:", err);
             });
-
         function tick(time) {
             if (video.readyState === video.HAVE_ENOUGH_DATA) {
                 if (time - lastTickTime > 250) { 
@@ -570,33 +485,20 @@
                     canvasElement.height = video.videoHeight;
                     canvasElement.width = video.videoWidth;
                     canvas.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
-                    
                     var imageData = canvas.getImageData(0, 0, canvasElement.width, canvasElement.height);
                     var code = jsQR(imageData.data, imageData.width, imageData.height, {
                         inversionAttempts: "dontInvert",
                     });
-                    
                     if (code) {
                         const txt = code.data;
                         if (txt.startsWith('uid_') && txt !== lastScannedId) {
                             lastScannedId = txt;
-                            
                             const scannerBox = document.getElementById('scanner-box');
-                            scannerBox.classList.remove('scan-success-blink', 'scan-error-blink', 'scan-wait-blink');
+                            scannerBox.classList.remove('scan-success-blink', 'scan-error-blink');
                             void scannerBox.offsetWidth; // Примусовий reflow
-                            
-                            // Запобіжник: Гра починається тільки коли набралося мінімум 4 гравців
-                            if (currentCount < 4) {
-                                scannerBox.classList.add('scan-wait-blink');
-                                clearTimeout(scanResetTimeout);
-                                scanResetTimeout = setTimeout(() => { lastScannedId = null; }, 2000);
-                                return; 
-                            }
-
                             // Перевірка команди відсканованого гравця
                             const scannedTeamId = globalPlayersMap[txt];
                             const myTeamId = myTeam ? myTeam.id : null;
-
                             if (scannedTeamId && scannedTeamId === myTeamId) {
                                 // Гравець своєї команди - Блимаємо зеленим і додаємо до заліку
                                 scannerBox.classList.add('scan-success-blink');
@@ -608,7 +510,6 @@
                                 // Гравець іншої команди (або не знайдено) - Блимаємо червоним
                                 scannerBox.classList.add('scan-error-blink');
                             }
-
                             clearTimeout(scanResetTimeout);
                             scanResetTimeout = setTimeout(() => { lastScannedId = null; }, 2000);
                         }
@@ -618,10 +519,8 @@
             requestAnimationFrame(tick);
         }
     }
-
     function generateQR() {
         const url = window.location.href;
-        
         const qrcodeUrlContainer = document.getElementById('qrcode-url');
         qrcodeUrlContainer.innerHTML = ""; 
         new QRCode(qrcodeUrlContainer, {
@@ -629,7 +528,6 @@
             colorDark : "#111111", colorLight : "#ffffff",
             correctLevel : QRCode.CorrectLevel.L
         });
-
         const qrcodeIdContainer = document.getElementById('qrcode-id');
         qrcodeIdContainer.innerHTML = ""; 
         new QRCode(qrcodeIdContainer, {
@@ -638,24 +536,19 @@
             correctLevel : QRCode.CorrectLevel.L
         });
     }
-
     // ==========================================
     // ЛОГІКА АВТОМАТИЧНОГО РОЗПОДІЛУ
     // ==========================================
     function getBestTeamLimit(n) {
         if (n < 4) return 2; 
-        
         let bestK = 2;
         let minScore = Infinity;
-        
         // Гарантуємо, що ніхто не лишиться наодинці (baseSize >= 2)
         for (let k = 4; k >= 2; k--) {
             const baseSize = Math.floor(n / k);
             if (baseSize < 2) continue; 
-            
             let rem = n % k;
             if (rem === 0) return k; 
-            
             if (rem < minScore) {
                 minScore = rem;
                 bestK = k; 
@@ -663,7 +556,6 @@
         }
         return bestK;
     }
-
     // ==========================================
     // СИСТЕМА МІГРАЦІЇ ХОСТА ТА СЛОТІВ
     // ==========================================
@@ -673,23 +565,17 @@
             setTimeout(() => initNetwork(0), 2000); 
             return;
         }
-
         currentSlot = slot;
         const targetRoomId = `${GLOBAL_ROOM_ID}-s${slot}`;
-
         clearInterval(hostActivityInterval);
         clearInterval(clientActivityInterval);
         clearInterval(mergeInterval);
-        
         if (myPeer) {
             myPeer.destroy();
             myPeer = null;
         }
-        
         updateStatus("Пошук мережі...", "loading");
-        
         myPeer = new Peer(targetRoomId);
-
         myPeer.on('disconnected', () => {
             if (myPeer && !myPeer.destroyed && !myPeer.isReconnecting) {
                 myPeer.isReconnecting = true;
@@ -699,7 +585,6 @@
                 }, 500);
             }
         });
-
         myPeer.on('open', (id) => {
             isHost = true;
             isReconnecting = false;
@@ -707,20 +592,16 @@
             globalPlayersMap = {};
             scannedTeammates.clear();
             updateStatus("Ви - хост", "host");
-            
             if (isAutoTeamLimit) {
                 activeTeamLimit = getBestTeamLimit(1); 
             }
-
             if (!myTeam || TEAMS.indexOf(myTeam) >= activeTeamLimit) {
                 myTeam = TEAMS[0];
             }
-            
             updateTeamUI(myTeam);
             setupHostLogic();
             broadcastCount(); 
         });
-
         myPeer.on('error', (err) => {
             if (err.type === 'unavailable-id') {
                 checkIfHostAliveAndConnect(targetRoomId, slot);
@@ -730,11 +611,9 @@
             }
         });
     }
-
     function checkIfHostAliveAndConnect(targetRoomId, slot) {
         if (myPeer) myPeer.destroy();
         myPeer = new Peer(); 
-
         myPeer.on('disconnected', () => {
             if (myPeer && !myPeer.destroyed && !myPeer.isReconnecting) {
                 myPeer.isReconnecting = true;
@@ -744,11 +623,9 @@
                 }, 500);
             }
         });
-
         myPeer.on('open', (id) => {
             let connectionResolved = false;
             hostConnection = myPeer.connect(targetRoomId, { reliable: true });
-
             const ghostTimeout = setTimeout(() => {
                 if (!connectionResolved) {
                     connectionResolved = true;
@@ -756,16 +633,13 @@
                     initNetwork(slot + 1); 
                 }
             }, 1000); 
-
             hostConnection.on('open', () => {
                 if (connectionResolved) return; 
                 connectionResolved = true;
                 clearTimeout(ghostTimeout);
-                
                 isHost = false;
                 setupClientLogic();
             });
-
             hostConnection.on('error', (err) => {
                 if (connectionResolved) return;
                 connectionResolved = true;
@@ -773,19 +647,16 @@
                 initNetwork(slot + 1); 
             });
         });
-
         myPeer.on('error', (err) => {
             setTimeout(() => initNetwork(slot), 1000);
         });
     }
-
     // ==========================================
     // ЛОГІКА ХОСТА
     // ==========================================
     function setupHostLogic() {
         document.getElementById('host-controls').style.display = 'flex';
         updateHostControlsUI();
-
         if (currentSlot > 0) {
             mergeInterval = setInterval(() => {
                 if (!isHost) return;
@@ -809,13 +680,11 @@
                 checkPeer.on('error', () => { checkPeer.destroy(); });
             }, 4000);
         }
-
         myPeer.on('connection', (conn) => {
             conn.on('data', (data) => {
                 if (data.type === 'HELLO') {
                     const cid = data.clientId;
                     if (!cid) return; 
-
                     if (!activeClientsMap.has(cid)) {
                         activeClientsMap.set(cid, { conn: conn, team: null, lastActivity: Date.now() });
                     } else {
@@ -823,7 +692,6 @@
                         existing.conn = conn; 
                         existing.lastActivity = Date.now();
                     }
-
                     if (isAutoTeamLimit) {
                         const totalPlayers = 1 + activeClientsMap.size;
                         const bestLimit = getBestTeamLimit(totalPlayers);
@@ -833,10 +701,8 @@
                             rebalanceTeamsToLimit();
                         }
                     }
-                    
                     const client = activeClientsMap.get(cid);
                     let assignedTeam = client.team;
-
                     if (!assignedTeam || TEAMS.indexOf(assignedTeam) >= activeTeamLimit) {
                         if (data.teamId) {
                             assignedTeam = TEAMS.find(t => t.id === data.teamId);
@@ -848,7 +714,6 @@
                         }
                         client.team = assignedTeam;
                     }
-                    
                     conn.send({ type: 'TEAM', value: assignedTeam });
                     broadcastCount();
                 } 
@@ -859,7 +724,6 @@
                     }
                 }
             });
-
             conn.on('close', () => {
                 for (const[cid, clientData] of activeClientsMap.entries()) {
                     if (clientData.conn === conn) {
@@ -870,27 +734,21 @@
                 }
             });
         });
-
         hostActivityInterval = setInterval(() => {
             if (!isHost) return;
             const now = Date.now();
-
             for (const[cid, client] of activeClientsMap.entries()) {
                 if (now - client.lastActivity > TIMEOUT_LIMIT) {
                     if (client.conn && client.conn.open) client.conn.close();
                     activeClientsMap.delete(cid);
                 }
             }
-            
             broadcastCount();
         }, PING_INTERVAL);
     }
-
     function broadcastCount() {
         if (!isHost) return;
-
         let totalPlayers = 1 + activeClientsMap.size;
-        
         if (isAutoTeamLimit) {
             const bestLimit = getBestTeamLimit(totalPlayers);
             if (bestLimit !== activeTeamLimit) {
@@ -899,18 +757,14 @@
                 rebalanceTeamsToLimit();
             }
         }
-
         let currentTotal = 1; 
         const teamCounts = { 'red': 0, 'white': 0, 'black': 0, 'blue': 0 };
-        
         // Збір мапи всіх гравців для розсилки (Синхронізація команд)
         let playersMap = {};
-        
         if (myTeam) {
             teamCounts[myTeam.id]++;
             playersMap[MY_CLIENT_ID] = myTeam.id;
         }
-        
         for (const [cid, client] of activeClientsMap.entries()) {
             currentTotal++;
             if (client.team) {
@@ -918,9 +772,7 @@
                 playersMap[cid] = client.team.id;
             }
         }
-
         globalPlayersMap = playersMap; // Оновлюємо власну мапу (хоста)
-        
         // Очищаємо відключених гравців зі списку відсканованих
         if (myTeam) {
             let validScanned = new Set();
@@ -931,13 +783,11 @@
             }
             scannedTeammates = validScanned;
         }
-
         updateCount(currentTotal);
         if (myTeam) {
             myTeamSize = teamCounts[myTeam.id];
             updateTeamCountUI(myTeamSize);
         }
-
         for (const client of activeClientsMap.values()) {
             if (client.conn && client.conn.open) {
                 client.conn.send({ 
@@ -951,17 +801,14 @@
             }
         }
     }
-
     function getNextBalancedTeam() {
         const teamCounts = { 'red': 0, 'white': 0, 'black': 0, 'blue': 0 };
         if (myTeam) teamCounts[myTeam.id]++;
         for (const client of activeClientsMap.values()) {
             if (client.team) teamCounts[client.team.id]++;
         }
-
         let minTeam = TEAMS[0];
         let minCount = teamCounts[TEAMS[0].id];
-
         for (let i = 1; i < activeTeamLimit; i++) {
             if (teamCounts[TEAMS[i].id] < minCount) {
                 minTeam = TEAMS[i];
@@ -970,7 +817,6 @@
         }
         return minTeam;
     }
-
     function rebalanceTeamsToLimit() {
         if (TEAMS.indexOf(myTeam) >= activeTeamLimit) {
             myTeam = getNextBalancedTeam();
@@ -986,7 +832,6 @@
             }
         }
     }
-
     function setTeamLimit(limit, isAuto = false) {
         if (!isHost) return;
         activeTeamLimit = limit;
@@ -995,7 +840,6 @@
         rebalanceTeamsToLimit();
         broadcastCount();
     }
-    
     function setAutoMode() {
         if (!isHost) return;
         isAutoTeamLimit = true;
@@ -1003,15 +847,12 @@
         const bestLimit = getBestTeamLimit(totalPlayers);
         setTeamLimit(bestLimit, true);
     }
-
     function updateHostControlsUI() {
         document.getElementById('btn-limit-2').className = 'btn-team-limit';
         document.getElementById('btn-limit-3').className = 'btn-team-limit';
         document.getElementById('btn-limit-4').className = 'btn-team-limit';
-
         const activeBtn = document.getElementById(`btn-limit-${activeTeamLimit}`);
         const autoBadge = document.getElementById('auto-badge');
-
         if (activeBtn) {
             activeBtn.classList.add('active');
             if (isAutoTeamLimit) {
@@ -1022,7 +863,6 @@
             }
         }
     }
-
     // ==========================================
     // ЛОГІКА КЛІЄНТА
     // ==========================================
@@ -1031,22 +871,17 @@
         document.getElementById('host-controls').style.display = 'none';
         updateStatus("Онлайн", "client");
         lastHostActivity = Date.now();
-        
         hostConnection.send({ 
             type: 'HELLO', 
             clientId: MY_CLIENT_ID,
             teamId: myTeam ? myTeam.id : null 
         });
-        
         clearInterval(clientActivityInterval);
-        
         hostConnection.on('data', (data) => {
             lastHostActivity = Date.now();
-
             if (data.type === 'COUNT') {
                 if (data.playersMap) {
                     globalPlayersMap = data.playersMap; // Синхронізація команд усіх гравців
-                    
                     // Очищаємо відключених гравців зі списку відсканованих
                     if (myTeam) {
                         let validScanned = new Set();
@@ -1058,7 +893,6 @@
                         scannedTeammates = validScanned;
                     }
                 }
-                
                 updateCount(data.value);
                 if (data.teamCounts && myTeam) {
                     myTeamSize = data.teamCounts[myTeam.id];
@@ -1081,7 +915,6 @@
                 handleHostDrop(data.slot, true);
             }
         });
-
         clientActivityInterval = setInterval(() => {
             if (Date.now() - lastHostActivity > TIMEOUT_LIMIT) {
                 handleHostDrop(0); 
@@ -1089,20 +922,16 @@
                 hostConnection.send({ type: 'PONG', clientId: MY_CLIENT_ID });
             }
         }, PING_INTERVAL);
-
         hostConnection.on('close', () => handleHostDrop(0, true));
         hostConnection.on('error', () => handleHostDrop(0));
     }
-
     function handleHostDrop(targetSlot = 0, immediate = false) {
         if (isReconnecting) return;
         isReconnecting = true;
-
         clearInterval(clientActivityInterval);
         clearInterval(hostActivityInterval);
         clearInterval(mergeInterval);
         updateStatus("Оновлення...", "loading");
-        
         if (hostConnection) {
             hostConnection.close();
             hostConnection = null;
@@ -1111,14 +940,12 @@
             myPeer.destroy();
             myPeer = null;
         }
-
         const backoff = immediate ? 100 : Math.floor(Math.random() * 800) + 200;
         setTimeout(() => {
             isReconnecting = false;
             initNetwork(targetSlot); 
         }, backoff);
     }
-
     // ==========================================
     // UI ФУНКЦІЇ
     // ==========================================
@@ -1127,64 +954,49 @@
             currentCount = newCount;
             const counterEl = document.getElementById('counter');
             const boxEl = document.getElementById('counter-box');
-            
             counterEl.innerText = currentCount;
-            
             boxEl.classList.remove('pulse');
             void boxEl.offsetWidth; 
             boxEl.classList.add('pulse');
             setTimeout(() => boxEl.classList.remove('pulse'), 300);
         }
     }
-
     // Одночасне оновлення лічильника команди та відсканованих гравців
     function updateTeamCountUI(count) {
         const teamCounterEl = document.getElementById('team-counter');
         if (teamCounterEl) {
             teamCounterEl.innerText = count > 0 ? count : 1;
         }
-
         const scannedCounterEl = document.getElementById('scanned-counter');
         if (scannedCounterEl) {
-            scannedCounterEl.innerText = scannedTeammates.size;
-        }
-
-        // Відображаємо лічильники лише якщо у грі мінімум 4 учасники
-        const badgesContainer = document.getElementById('team-badges');
-        if (badgesContainer) {
-            if (currentCount >= 4) {
-                badgesContainer.style.display = 'flex';
+            if (count >= 2) {
+                scannedCounterEl.style.display = 'flex';
+                // Виводимо у форматі "відскановані / кількість_решти_гравців_у_команді"
+                scannedCounterEl.innerText = `${scannedTeammates.size} / ${count - 1}`;
             } else {
-                badgesContainer.style.display = 'none';
+                scannedCounterEl.style.display = 'none';
             }
         }
     }
-
     function updateTeamUI(team) {
         if (!team) return;
         const container = document.getElementById('team-container');
         const nameEl = document.getElementById('team-name');
-        
         container.style.display = 'flex';
         container.style.backgroundColor = team.bg;
         container.style.color = team.color;
-        
         if (team.border) {
             container.style.border = team.border;
         } else {
             container.style.border = '2px solid transparent';
         }
-        
         nameEl.innerText = team.name;
     }
-
     function updateStatus(text, type) {
         const badge = document.getElementById('status-badge');
         const span = document.getElementById('status-text');
-        
         badge.className = '';
         span.innerText = text;
-
         if (type === 'loading') {
             badge.innerHTML = `<i data-lucide="loader-2" style="animation: spin 1s linear infinite;"></i> <span id="status-text">${text}</span>`;
         } else if (type === 'host') {
@@ -1199,7 +1011,6 @@
         }
         lucide.createIcons();
     }
-
     async function shareLink() {
         const link = window.location.href;
         if (navigator.share) {
