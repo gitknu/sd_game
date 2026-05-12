@@ -276,7 +276,7 @@
         width: clamp(16px, 4vw, 20px); height: clamp(16px, 4vw, 20px);
     }
 
-    /* Розділені лічильники команди та сканувань */
+    /* Розділені круглі лічильники команди та сканувань */
     .team-badges {
         display: flex;
         align-items: center;
@@ -286,14 +286,12 @@
     .team-counter-badge {
         background: rgba(127, 127, 127, 0.25);
         color: inherit;
-        border-radius: 20px;
-        padding: 0 clamp(6px, 1.5vw, 10px);
+        border-radius: 50%;
+        width: clamp(24px, 7vw, 28px); 
         height: clamp(24px, 7vw, 28px);
-        min-width: clamp(24px, 7vw, 28px);
         display: flex; align-items: center; justify-content: center;
         font-size: clamp(0.8rem, 3vw, 0.9rem); font-weight: 900;
         border: 1px solid rgba(127, 127, 127, 0.3);
-        white-space: nowrap;
     }
 
     .scanned-badge {
@@ -386,7 +384,7 @@
 </head>
 <body>
 
-<div class="version-tag">v2.6</div>
+<div class="version-tag">v2.7</div>
 
 <div id="ui-layer">
     <div class="card">
@@ -433,11 +431,13 @@
 
         <!-- Блок команди та розділені лічильники -->
         <div id="team-container">
-            <i data-lucide="users"></i>
-            <span id="team-name"></span>
-            <div class="team-badges">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <i data-lucide="users"></i>
+                <span id="team-name"></span>
+            </div>
+            <div class="team-badges" id="team-badges-container" style="display: none;">
                 <div class="team-counter-badge" id="team-counter">0</div>
-                <div class="team-counter-badge scanned-badge" id="scanned-counter" style="display: none;">0 / 0</div>
+                <div class="team-counter-badge scanned-badge" id="scanned-counter">0</div>
             </div>
         </div>
 
@@ -580,7 +580,8 @@
                             const scannedTeamId = globalPlayersMap[txt];
                             const myTeamId = myTeam ? myTeam.id : null;
 
-                            if (scannedTeamId && scannedTeamId === myTeamId) {
+                            // Гру можна почати (і сканувати), якщо гравців >= 4
+                            if (currentCount >= 4 && scannedTeamId && scannedTeamId === myTeamId) {
                                 // Гравець своєї команди - Блимаємо зеленим і додаємо до заліку
                                 scannerBox.classList.add('scan-success-blink');
                                 if (txt !== MY_CLIENT_ID) {
@@ -588,7 +589,7 @@
                                     updateTeamCountUI(myTeamSize); // Миттєво оновлюємо сірий лічильник
                                 }
                             } else {
-                                // Гравець іншої команди (або не знайдено) - Блимаємо червоним
+                                // Гравець іншої команди (або гра ще не почалася) - Блимаємо червоним
                                 scannerBox.classList.add('scan-error-blink');
                             }
 
@@ -1120,22 +1121,18 @@
         }
     }
 
-    // Одночасне оновлення лічильника команди та відсканованих гравців
-    function updateTeamCountUI(count) {
+    // Показуємо лічильники ТІЛЬКИ якщо в грі >= 4 гравців
+    function updateTeamCountUI(teamSize) {
+        const badgesContainer = document.getElementById('team-badges-container');
         const teamCounterEl = document.getElementById('team-counter');
-        if (teamCounterEl) {
-            teamCounterEl.innerText = count > 0 ? count : 1;
-        }
-
         const scannedCounterEl = document.getElementById('scanned-counter');
-        if (scannedCounterEl) {
-            if (count >= 2) {
-                scannedCounterEl.style.display = 'flex';
-                // Виводимо у форматі "відскановані / кількість_решти_гравців_у_команді"
-                scannedCounterEl.innerText = `${scannedTeammates.size} / ${count - 1}`;
-            } else {
-                scannedCounterEl.style.display = 'none';
-            }
+
+        if (currentCount >= 4) {
+            if (badgesContainer) badgesContainer.style.display = 'flex';
+            if (teamCounterEl) teamCounterEl.innerText = teamSize;
+            if (scannedCounterEl) scannedCounterEl.innerText = scannedTeammates.size;
+        } else {
+            if (badgesContainer) badgesContainer.style.display = 'none';
         }
     }
 
